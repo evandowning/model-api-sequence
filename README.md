@@ -12,5 +12,5 @@ This models api call sequences using LSTM
 $ python lstm.py api-sequences-folder/ malware.labels
 
 For example
-$ python lstm.py /data/arsa/api-sequences /data/arsa/api-sequences.labels
+$ python lstm.py /data/arsa/api-sequences /data/arsa/api-sequences.labels features/
 ```
