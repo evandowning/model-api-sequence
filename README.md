@@ -9,8 +9,10 @@ This models api call sequences using LSTM
 
 ## Usage
 ```
-$ python lstm.py api-sequences-folder/ malware.labels
+$ python preprocess.py api-sequences-folder/ malware.labels features/
+$ python lstm.py features/labels features/
 
 For example
-$ python lstm.py /data/arsa/api-sequences /data/arsa/api-sequences.labels features/
+$ python preprocess.py /data/arsa/api-sequences /data/arsa/api-sequences.labels features/
+$ python lstm.py features/labels features/
 ```
