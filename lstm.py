@@ -1,20 +1,19 @@
 # Based on Matthew Landen's code
-# Ported for using on malware API call sequences
+# Ported and improved for using on malware API call sequences
 
 import sys
 import os
 import cPickle as pkl
 import numpy as np
 import math
+from collections import Counter
 
-from sklearn import metrics
 from sklearn.model_selection import KFold
+from sklearn.metrics import confusion_matrix,roc_auc_score
 
 from keras.models import Sequential
-from keras.layers import Input, Dense, LSTM
-from keras.preprocessing import sequence as seq
+from keras.layers import Dense, LSTM
 from keras import callbacks as cb
-from keras import utils as ksUtil
 
 # Creates multiple generators of the data to use on Keras
 # We do this because we can have very large datasets we can't
@@ -37,6 +36,8 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
         # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         xSet.append([list([seq]) for seq in x])
 
+        # We convert labels to numbers and will use Keras' categorical functionality to convert this
+        # to an appropriate hot encoding
         ySet.append(list([labelMap.index(labels[sample[i]])]))
 
         # Batch size reached, yield data
@@ -57,12 +58,16 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
 
 # Builds LSTM model
 def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, class_count):
+    # Specify number of hidden layers
     hidden_layers = 100
-    early_stop = cb.EarlyStopping(monitor='acc', min_delta = 0.0001, patience = 3)
+
+    # https://keras.io/callbacks/#earlystopping
+    early_stop = cb.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
 
     model = Sequential()
 
     model.add(
+        # https://keras.io/layers/recurrent/#lstm
         LSTM(
             hidden_layers,
             input_shape=(maxLen, 1),
@@ -70,31 +75,46 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
             )
         )
 
+    # https://keras.io/layers/core/#dense
     model.add(Dense(class_count, activation='softmax'))
 
+    # https://keras.io/models/model/#compile
     model.compile(
         loss='sparse_categorical_crossentropy',
+        # Which optimizer to use: https://keras.io/optimizers/
         optimizer='rmsprop',
-        metrics=['acc'])
+        # Metrics to print
+        # We use sparse_categorical_accuracy as opposed to categorical_accuracy
+        # because: https://stackoverflow.com/questions/44477489/keras-difference-between-categorical-accuracy-and-sparse-categorical-accuracy
+        metrics=['sparse_categorical_accuracy'])
 
+    # https://keras.io/models/model/#fit_generator
     hist = model.fit_generator(
+        # Data to train
         trainData,
+        # Use multiprocessing because python Threading isn't really
+        # threading...
+        use_multiprocessing = True,
+        # Number of steps per epoch (this is how we train our large
+        # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
+        #TODO - Why are we only able to do just one epoch?
         epochs = 1,
+        # Validation data (will not be trained on)
         validation_data = testData,
         validation_steps = testBatches,
+        # List of callbacks to be called while training.
         callbacks = [early_stop])
 
     return model, hist
 
-#TODO
 # Trains and tests LSTM over samples
 def train_lstm(folder, sample, labels, labelMap):
     # Number of folds in cross validation
     nFolds = 10
 
     # Batch size (# of samples to have LSTM train at once)
-    batchSize = 11
+    batchSize = 1000
 
     # Sequence lengths (should be all the same. they should be padded)
     maxLen = 0
@@ -103,12 +123,6 @@ def train_lstm(folder, sample, labels, labelMap):
         x = pkl.load(fr)
         maxLen = len(x)
 
-    # For holding results of trained networks
-    predictions = dict()
-    ground_truths = dict()
-    yHatVecs = dict()
-    yTruthVecs = dict()
-
     # Get folds for cross validation
     folds = KFold(n_splits=nFolds, shuffle=True)
     foldCount = 0
@@ -116,6 +130,7 @@ def train_lstm(folder, sample, labels, labelMap):
     # Train and test LSTM over each fold
     for trainFold, testFold in folds.split(sample):
         foldCount += 1
+        print '==========================================================='
         print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
 
         # Put features into format LSTM can ingest
@@ -126,31 +141,69 @@ def train_lstm(folder, sample, labels, labelMap):
         train_num_batches = math.ceil(float(len(trainFold))/batchSize)
         test_num_batches = math.ceil(float(len(testFold))/batchSize)
 
-        #TODO
+        #TODO - Issues with large sequence lengths
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, maxLen, len(labelMap))
-        print hist.history
+        # Print accuracies
         print ''
-        continue
+        print hist.history
 
-        # Test LSTM
-        fold = self.generate_file(componentType, foldCount)
-        testNames = fold.names
-        yTest = fold.y
+        # Run predictions over test data to get final results
+        # https://keras.io/models/model/#predict_generator
+        p = lstm.predict_generator(testData, steps=test_num_batches, use_multiprocessing=True)
+        # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
+        predictClasses = p.argmax(axis=-1)
+        trueClasses = list()
+        for x,y in testData:
+            for l in y:
+                trueClasses.append(l[0])
 
-        yHat = lstm.predict(fold.x)
+        # Print AUC
+        # Note: there are issues with this currently:
+        # https://stackoverflow.com/questions/39685740/calculate-sklearn-roc-auc-score-for-multi-class#39703870
+        # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#multiclass-settings
+        # https://github.com/scikit-learn/scikit-learn/issues/3298
+#       auc = roc_auc_score(trueClasses,predictClasses)
+#       print 'AUC: {0}'.format(auc)
 
-        for i in range(len(testNames)):
-            classLabel = yTest[i].tolist().index(yTest[i].max())
-            prediction = yHat[i].tolist().index(yHat[i].max())
-            eventChainIdx = testNames[i]
+        # Print counts of each label for fold (combination of labels from train and test since
+        # it's no guaranteed they'll have the same labels)
+        c = Counter(trueClasses) + Counter(predictClasses)
+        foldLabelMap = sorted(c.keys())
+        print ''
+        print 'Fold Indices/Counts (fold dataset):'
+        for e,l in enumerate(foldLabelMap):
+            sys.stdout.write('Index: {0: <10} Class: {1: <20} Count: {2: <10} ({3:.4f}% of fold dataset)\n'.format(e,l,c[l],100*float(c[l])/sum(c.values())))
 
-            predictions[eventChainIdx] = prediction
-            ground_truths[eventChainIdx] = classLabel
-            yHatVecs[eventChainIdx] = yHat[i].tolist()
-            yTruthVecs[eventChainIdx] = yTest[i].tolist()
+        # Print confusion matrix
+        # http://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
+        cf = confusion_matrix(trueClasses,predictClasses)
+        print ''
+        print 'Confusion Matrix (fold dataset): (x-axis: Actual, y-axis: Predicted)'
+        for x in cf:
+            for y in x:
+                sys.stdout.write('{0} '.format(y))
+            sys.stdout.write('\n')
+        print ''
 
-    return predictions, ground_truths, yHatVecs, yTruthVecs
+        # Print TP/FP/FN/TN rates
+        # A nice visual for determining these for the multi-class case:
+        # https://stackoverflow.com/questions/31324218/scikit-learn-how-to-obtain-true-positive-true-negative-false-positive-and-fal
+        # https://stackoverflow.com/a/43331484
+        # Convert confusion matrix to floats so we can have decimals
+        cf = cf.astype(np.float32)
+        FP = cf.sum(axis=0) - np.diag(cf)
+        FN = cf.sum(axis=1) - np.diag(cf)
+        TP = np.diag(cf)
+        TN = cf.sum() - (FP + FN + TP)
+        TPR = TP/(TP+FN)
+        TNR = TN/(TN+FP)
+        FNR = FN/(FN+TP)
+        FPR = FP/(FP+TN)
+        ACC = (TP+TN)/(TP+TN+FP+FN)
+        print 'Stats for each class (class is index in these arrays)'
+        print 'TPR: {0}\nFPR: {1}\nFNR: {2}\nTNR: {3}\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
+        print 'ACC: {0}\n'.format(list(ACC))
 
 def usage():
     print 'usage: python lstm.py features/labels features/'
@@ -179,8 +232,20 @@ def _main():
             labels[s] = l
             labelMap.add(l)
 
+    # Get label counts
+    c = Counter([l for s,l in labels.iteritems()])
+
+    # Lock in label ordering (and sort by popularity)
+    labelMap = sorted(labelMap, key=lambda l: c[l], reverse=True)
+
+    # Print class labels and counts
+    print 'Total Dataset:'
+    for e,l in enumerate(labelMap):
+        sys.stdout.write('Class: {0: <10} Label: {1: <20} Count: {2: <10} ({3:.2f}% of dataset)\n'.format(e,l,c[l],100*float(c[l])/sum(c.values())))
+    print ''
+
     # Train LSTM
-    train_lstm(folder, sample, labels, list(labelMap))
+    train_lstm(folder, sample, labels, labelMap)
 
 if __name__ == '__main__':
     _main()

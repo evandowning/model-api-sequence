@@ -178,12 +178,9 @@ def _main():
     # Get final labels we'll only consider.
     # For example, only consider labels with at least 100 samples
     for l,c in counts.most_common():
-        #TODO - just for testing/debugging for small set of samples
         # Only consider families with >= 10 samples
         if c < 10:
             break
-        elif c > 50:
-            continue
         else:
             final_labels.add(l)
 
