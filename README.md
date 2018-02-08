@@ -7,6 +7,15 @@ This models api call sequences using LSTM
   * keras
   * sklearn
 
+## NOTES
+preprocess.py will delete the features/ folder every time it is
+run. Make sure you back the folder up before running the script
+if you wish to keep your previously extracted features. It will also
+overwrite "errors.txt"
+
+preprocess.py will also write to a file called "errors.txt" which lists the samples
+which has no sequences within them or had errors whilst processing the samples
+
 ## Usage
 ```
 $ python preprocess.py api-sequences-folder/ malware.labels features/
