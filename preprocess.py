@@ -49,8 +49,18 @@ def get_sequences(folder, sample, maxLen, feature_folder):
         # Pad remaining sequences. Since we +1 all indices of the API call, the
         # number 0 is left for us to use as padding.
         # Padding can sound like a stupid idea, but it's been proven to work
-        # and be used
+        # and be used by others:
+        # https://github.com/keras-team/keras/issues/2375
+        # https://stackoverflow.com/questions/34670112/how-to-deal-with-batches-with-variable-length-sequences-in-tensorflow#34675264
+        # https://www.tensorflow.org/versions/master/tutorials/seq2seq
         # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
+        # https://www.mathworks.com/help/nnet/examples/classify-sequence-data-using-lstm-networks.html?requestedDomain=true
+
+        # TODO: Maybe look into future solutions which don't require padding?
+        #       But I believe we can't use batching at that point (batching is
+        #       training the LSTM with batches of samples instead of one sample
+        #       at a time, which can save us a lot of time).
+
         delta = maxLen - len(seq)
         if delta > 0:
             seq.extend([0]*delta)
