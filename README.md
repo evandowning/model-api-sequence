@@ -4,14 +4,13 @@ This models api call sequences using LSTM
 
 ## Requirements
   * Python 2.7
-  * keras
-  * sklearn
+  * keras 2.1.2
+  * sklearn 0.19.1
 
 ## NOTES
 preprocess.py will delete the features/ folder every time it is
 run. Make sure you back the folder up before running the script
-if you wish to keep your previously extracted features. It will also
-overwrite "errors.txt"
+if you wish to keep your previously extracted features.
 
 preprocess.py will also write to a file called "errors.txt" which lists the samples
 which has no sequences within them or had errors whilst processing the samples
@@ -23,8 +22,10 @@ $ python lstm.py features/labels features/
 
 # At this point we have a folder "features/" which contains a file "labels" which lists
 # all of the samples within the folder "features/" and their corresponding labels
+```
 
-For example
+## Example
+```
 $ python preprocess.py /data/arsa/api-sequences /data/arsa/api-sequences.labels /data/arsa/api-sequences-features/
 $ python lstm.py /data/arsa/api-sequences-features/labels /data/arsa/api-sequences-features/
 ```

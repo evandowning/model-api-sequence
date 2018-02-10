@@ -37,9 +37,10 @@ def get_sequences(folder, sample, maxLen, feature_folder):
             # Add number to list
             seq.append(num)
 
-            # If sequence is longer than maxLen (shouldn't be)
-            if len(seq) > maxLen:
-                return 'Sample {0} is longer than maxLen: {1}'.format(sample,maxLen)
+            # If sequence is longer than maxLen, break.
+            # This is used to truncate data
+            if len(seq) == maxLen:
+                break
 
     # If no sequences for this sample, print this out
     if len(seq) == 0:
@@ -92,8 +93,10 @@ def extract_features(folder, samples, label_fn, feature_folder):
 
     print 'Longest sequence: {0}'.format(longest)
 
-    #TODO - for debugging, limit this
-    longest = 1000
+    #TODO - Truncate datasets more intelligently
+    # https://machinelearningmastery.com/handle-long-sequences-long-short-term-memory-recurrent-neural-networks/
+    longest = 300
+    print 'Truncating to length: {0}'.format(longest)
 
     # Create argument pools
     args = [(folder,s,longest,feature_folder) for s,l in samples.iteritems()]

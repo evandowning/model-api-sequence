@@ -1,6 +1,3 @@
-# Based on Matthew Landen's code
-# Ported and improved for using on malware API call sequences
-
 import sys
 import os
 import cPickle as pkl
@@ -68,8 +65,13 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
 
     model.add(
         # https://keras.io/layers/recurrent/#lstm
+        # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         LSTM(
             hidden_layers,
+            # https://keras.io/getting-started/sequential-model-guide/#specifying-the-input-shape
+            # maxLen is the length of each sample's sequence length, 1 is the dimension of the feature.
+            # In our case the feature dimension is 1 because each api call is a single feature (explained more
+            # in https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/)
             input_shape=(maxLen, 1),
             return_sequences=False
             )
@@ -98,11 +100,16 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
-        #TODO - Why are we only able to do just one epoch?
+        #TODO - Why can't we do multiple epochs?
+        # According to the error it seems like the generator cannot be looped multiple times?
+        # https://github.com/keras-team/keras/issues/5818#issuecomment-288516239
+        # According to the article ^ seems like epoch doesn't mean what we think it means.
         epochs = 1,
         # Validation data (will not be trained on)
         validation_data = testData,
         validation_steps = testBatches,
+        # Shuffle order of batches at beginning of each epoch
+        shuffle = True,
         # List of callbacks to be called while training.
         callbacks = [early_stop])
 
@@ -113,8 +120,9 @@ def train_lstm(folder, sample, labels, labelMap):
     # Number of folds in cross validation
     nFolds = 10
 
-    # Batch size (# of samples to have LSTM train at once)
-    batchSize = 1000
+    # Batch size (# of samples to have LSTM train at a time)
+    # It's okay if this does not evenly divide your entire sample set
+    batchSize = 400
 
     # Sequence lengths (should be all the same. they should be padded)
     maxLen = 0
@@ -122,6 +130,8 @@ def train_lstm(folder, sample, labels, labelMap):
     with open(path, 'rb') as fr:
         x = pkl.load(fr)
         maxLen = len(x)
+
+    print 'Sequence length of each sample: {0}'.format(maxLen)
 
     # Get folds for cross validation
     folds = KFold(n_splits=nFolds, shuffle=True)
@@ -141,7 +151,6 @@ def train_lstm(folder, sample, labels, labelMap):
         train_num_batches = math.ceil(float(len(trainFold))/batchSize)
         test_num_batches = math.ceil(float(len(testFold))/batchSize)
 
-        #TODO - Issues with large sequence lengths
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, maxLen, len(labelMap))
         # Print accuracies
