@@ -30,11 +30,14 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
 
         # Here we put each api into its own array of size one.
         # This sounds silly, but it's how Keras works for a dataset like api call sequences
+        # It's because for us, there's only one feature per line in the sequence.
+        # In Keras, it is possible to have multiple features per line in a sequence.
         # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         xSet.append([list([seq]) for seq in x])
 
-        # We convert labels to numbers and will use Keras' categorical functionality to convert this
-        # to an appropriate hot encoding
+        # We convert labels to numbers (we could have used Keras' categorical
+        # functionality to convert it to an appropriate hot encoding instead,
+        # but I like this better because I have more control over the labels
         ySet.append(list([labelMap.index(labels[sample[i]])]))
 
         # Batch size reached, yield data
@@ -95,7 +98,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # Data to train
         trainData,
         # Use multiprocessing because python Threading isn't really
-        # threading...
+        # threading: https://docs.python.org/2/glossary.html#term-global-interpreter-lock
         use_multiprocessing = True,
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
@@ -157,9 +160,10 @@ def train_lstm(folder, sample, labels, labelMap):
         print ''
         print hist.history
 
-        # Run predictions over test data to get final results
+        # Run predictions over test data one last time to get final results
         # https://keras.io/models/model/#predict_generator
         p = lstm.predict_generator(testData, steps=test_num_batches, use_multiprocessing=True)
+        # Extract predicted classes for each sample in testData
         # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
         predictClasses = p.argmax(axis=-1)
         trueClasses = list()
@@ -168,7 +172,7 @@ def train_lstm(folder, sample, labels, labelMap):
                 trueClasses.append(l[0])
 
         # Print AUC
-        # Note: there are issues with this currently:
+        # NOTE: there are issues with doing this currently:
         # https://stackoverflow.com/questions/39685740/calculate-sklearn-roc-auc-score-for-multi-class#39703870
         # http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#multiclass-settings
         # https://github.com/scikit-learn/scikit-learn/issues/3298

@@ -46,7 +46,11 @@ def get_sequences(folder, sample, maxLen, feature_folder):
     if len(seq) == 0:
         return 'Sample {0} has no sequence'.format(sample)
     else:
-        # Pad remaining sequences
+        # Pad remaining sequences. Since we +1 all indices of the API call, the
+        # number 0 is left for us to use as padding.
+        # Padding can sound like a stupid idea, but it's been proven to work
+        # and be used
+        # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         delta = maxLen - len(seq)
         if delta > 0:
             seq.extend([0]*delta)
@@ -54,7 +58,6 @@ def get_sequences(folder, sample, maxLen, feature_folder):
         # Write list of sequences to new file
         with open(newpath,'wb') as fw:
             pkl.dump(seq,fw)
-#           fw.write(str(seq))
 
         return None
 
@@ -102,7 +105,7 @@ def extract_features(folder, samples, label_fn, feature_folder):
     args = [(folder,s,longest,feature_folder) for s,l in samples.iteritems()]
 
     # Convert API call sequences into lists of numbers and write to file
-    # NOTE: We don't do this in parallel because it can take a long time.
+    # NOTE: We don't do this next step in parallel because it can take a long time.
     #       The multiple processes have to share apiMap which can introduce
     #       large overheads in IPC
 
@@ -178,6 +181,10 @@ def _main():
 
     final_labels = set()
 
+    #TODO - 10 is an arbitrary number. I.e., I don't want to train my LSTM
+    #       on any singletons (labels with just one sample), so I chose to
+    #       limit choosing labels with at least 10 samples within them.
+    #       Is there a smarter way to do this?
     # Get final labels we'll only consider.
     # For example, only consider labels with at least 100 samples
     for l,c in counts.most_common():
