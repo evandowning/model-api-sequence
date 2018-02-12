@@ -57,11 +57,16 @@ $ python preprocess.py api-sequences-folder/ malware.labels features/
 # all of the sample file names within the folder "features/" and their corresponding labels
 
 # Train LSTM model
-$ python lstm.py features/labels features/
+$ python lstm.py features/labels features/ models/ > out.txt
+
+# "models/" will be removed every time lstm.py is run. This folder stores all
+# of the models in JSON form to be imported and used by Keras in the future.
+
+# "out.txt" will store the detailed output of training and testing your LSTM
 ```
 
 ## Example
 ```
 $ python preprocess.py /data/arsa/api-sequences /data/arsa/api-sequences.labels /data/arsa/api-sequences-features/
-$ python lstm.py /data/arsa/api-sequences-features/labels /data/arsa/api-sequences-features/
+$ python lstm.py /data/arsa/api-sequences-features/labels /data/arsa/api-sequences-features/ /data/arsa/api-sequences-models/
 ```

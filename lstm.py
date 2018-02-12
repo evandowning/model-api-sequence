@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import cPickle as pkl
 import numpy as np
 import math
@@ -119,7 +120,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, sample, labels, labelMap):
+def train_lstm(folder, sample, labels, labelMap, model_folder):
     # Number of folds in cross validation
     nFolds = 10
 
@@ -159,6 +160,17 @@ def train_lstm(folder, sample, labels, labelMap):
         # Print accuracies
         print ''
         print hist.history
+
+        # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
+        # Convert model to JSON format to be stored
+        modelJSON = lstm.to_json()
+        # Store model in model_folder
+        fn = os.path.join(model_folder,'fold{0}-model.json'.format(foldCount))
+        with open(fn,'w') as fw:
+            fw.write(modelJSON)
+        # Store weights for model
+        fn = os.path.join(model_folder,'fold{0}-weight.h5'.format(foldCount))
+        lstm.save_weights(fn)
 
         # Run predictions over test data one last time to get final results
         # https://keras.io/models/model/#predict_generator
@@ -219,15 +231,23 @@ def train_lstm(folder, sample, labels, labelMap):
         print 'ACC: {0}\n'.format(list(ACC))
 
 def usage():
-    print 'usage: python lstm.py features/labels features/'
+    print 'usage: python lstm.py features/labels features/ models/'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         usage()
 
     label_fn = sys.argv[1]
     folder = sys.argv[2]
+    model_folder = sys.argv[3]
+
+    # Remove model folder if it already exists
+    if os.path.exists(model_folder):
+        shutil.rmtree(model_folder)
+        os.mkdir(model_folder)
+    else:
+        os.mkdir(model_folder)
 
     # Get all samples in features folder
     sample = list()
@@ -258,7 +278,7 @@ def _main():
     print ''
 
     # Train LSTM
-    train_lstm(folder, sample, labels, labelMap)
+    train_lstm(folder, sample, labels, labelMap, model_folder)
 
 if __name__ == '__main__':
     _main()
