@@ -24,7 +24,7 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
         x = list()
         y = list()
 
-        # Read in sample's sequence and convert it to hot encoding
+        # Read in sample's sequence and convert it a sequence integers
         path = os.path.join(folder,sample[i]+'.pkl')
         with open(path, 'rb') as fr:
             x = pkl.load(fr)
@@ -38,7 +38,7 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
 
         # We convert labels to numbers (we could have used Keras' categorical
         # functionality to convert it to an appropriate hot encoding instead,
-        # but I like this better because I have more control over the labels
+        # but I like this better because it looks cleaner)
         ySet.append(list([labelMap.index(labels[sample[i]])]))
 
         # Batch size reached, yield data
