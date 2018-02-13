@@ -67,6 +67,11 @@ $ python lstm.py features/labels features/ models/ > out.txt
 
 ## Example
 ```
-$ python preprocess.py /data/arsa/api-sequences /data/arsa/api-sequences.labels /data/arsa/api-sequences-features/
-$ python lstm.py /data/arsa/api-sequences-features/labels /data/arsa/api-sequences-features/ /data/arsa/api-sequences-models/
+$ python preprocess.py /data/arsa/api-sequences \
+                       /data/arsa/api-sequences.labels \
+                       /data/arsa/api-sequences-features/
+
+$ python lstm.py /data/arsa/api-sequences-features/labels \
+                 /data/arsa/api-sequences-features/ \
+                 /data/arsa/api-sequences-models/ > out.txt
 ```
