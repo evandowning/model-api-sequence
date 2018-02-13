@@ -92,6 +92,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # Metrics to print
         # We use sparse_categorical_accuracy as opposed to categorical_accuracy
         # because: https://stackoverflow.com/questions/44477489/keras-difference-between-categorical-accuracy-and-sparse-categorical-accuracy
+        # I.e., since we don't use hot-encoding, we use sparse_categorical_accuracy
         metrics=['sparse_categorical_accuracy'])
 
     # https://keras.io/models/model/#fit_generator
