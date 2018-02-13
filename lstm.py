@@ -59,8 +59,9 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
 
 # Builds LSTM model
 def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, class_count):
-    # Specify number of hidden layers
-    hidden_layers = 100
+    # Specify number of units
+    # https://stackoverflow.com/questions/37901047/what-is-num-units-in-tensorflow-basiclstmcell#39440218
+    num_units = 128
 
     # https://keras.io/callbacks/#earlystopping
     early_stop = cb.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
@@ -71,7 +72,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # https://keras.io/layers/recurrent/#lstm
         # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         LSTM(
-            hidden_layers,
+            num_units,
             # https://keras.io/getting-started/sequential-model-guide/#specifying-the-input-shape
             # maxLen is the length of each sample's sequence length, 1 is the dimension of the feature.
             # In our case the feature dimension is 1 because each api call is a single feature (explained more
