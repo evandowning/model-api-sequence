@@ -60,6 +60,9 @@ def get_sequences(folder, sample, maxLen, feature_folder):
         #       But I believe we can't use batching at that point (batching is
         #       training the LSTM with batches of samples instead of one sample
         #       at a time, which can save us a lot of time).
+        # https://machinelearningmastery.com/handle-long-sequences-long-short-term-memory-recurrent-neural-networks/
+        # https://github.com/keras-team/keras/issues/6776
+        # https://stackoverflow.com/questions/46353720/how-to-process-a-large-image-in-keras
 
         delta = maxLen - len(seq)
         if delta > 0:
