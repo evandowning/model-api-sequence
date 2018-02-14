@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix,roc_auc_score
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import Dense, LSTM, Activation
 from keras import callbacks as cb
 
 # Creates multiple generators of the data to use on Keras
@@ -83,7 +83,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         )
 
     # https://keras.io/layers/core/#dense
-    model.add(Dense(class_count, activation='softmax'))
+    model.add(Dense(class_count, name='logits'))
+    model.add(Activation('softmax'))
 
     # https://keras.io/models/model/#compile
     model.compile(
