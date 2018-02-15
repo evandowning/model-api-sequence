@@ -17,48 +17,51 @@ from keras import callbacks as cb
 # We do this because we can have very large datasets we can't
 # fit entirely into memory.
 def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
-    xSet = list()
-    ySet = list()
+    # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
+    while 1:
+        xSet = list()
+        ySet = list()
 
-    for e,i in enumerate(foldIDs):
-        x = list()
-        y = list()
+        for e,i in enumerate(foldIDs):
+            x = list()
+            y = list()
 
-        # Read in sample's sequence and convert it a sequence integers
-        path = os.path.join(folder,sample[i]+'.pkl')
-        with open(path, 'rb') as fr:
-            x = pkl.load(fr)
+            # Read in sample's sequence and convert it a sequence integers
+            path = os.path.join(folder,sample[i]+'.pkl')
+            with open(path, 'rb') as fr:
+                x = pkl.load(fr)
 
-        # Here we put each api into its own array of size one.
-        # This sounds silly, but it's how Keras works for a dataset like api call sequences
-        # It's because for us, there's only one feature per line in the sequence.
-        # In Keras, it is possible to have multiple features per line in a sequence.
-        # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
-        xSet.append([list([seq]) for seq in x])
+            # Here we put each api into its own array of size one.
+            # This sounds silly, but it's how Keras works for a dataset like api call sequences
+            # It's because for us, there's only one feature per line in the sequence.
+            # In Keras, it is possible to have multiple features per line in a sequence.
+            # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
+            xSet.append([list([seq]) for seq in x])
 
-        # We convert labels to numbers (we could have used Keras' categorical
-        # functionality to convert it to an appropriate hot encoding instead,
-        # but I like this better because it looks cleaner)
-        ySet.append(list([labelMap.index(labels[sample[i]])]))
+            # We convert labels to numbers (we could have used Keras' categorical
+            # functionality to convert it to an appropriate hot encoding instead,
+            # but I like this better because it looks cleaner)
+            ySet.append(list([labelMap.index(labels[sample[i]])]))
 
-        # Batch size reached, yield data
-        if (e+1) % batchSize == 0:
-            # Here we convert our lists into Numpy arrays because
-            # Keras requires it as input for its fit_generator()
-            x = np.array(xSet)
-            y = np.array(ySet)
+            # Batch size reached, yield data
+            if (e+1) % batchSize == 0:
+                # Here we convert our lists into Numpy arrays because
+                # Keras requires it as input for its fit_generator()
+                x = np.array(xSet)
+                y = np.array(ySet)
 
-            xSet = list()
-            ySet = list()
+                xSet = list()
+                ySet = list()
 
-            yield (x, y)
+                yield (x, y)
 
-    # Yield remaining set
-    if len(xSet) > 0:
-        yield (np.array(xSet), np.array(ySet))
+        # Yield remaining set
+        if len(xSet) > 0:
+            yield (np.array(xSet), np.array(ySet))
 
 # Builds LSTM model
 def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, class_count):
+    # TODO - What is this?
     # Specify number of units
     # https://stackoverflow.com/questions/37901047/what-is-num-units-in-tensorflow-basiclstmcell#39440218
     num_units = 128
@@ -107,11 +110,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
-        #TODO - Why can't we do multiple epochs?
-        # According to the error it seems like the generator cannot be looped multiple times?
-        # https://github.com/keras-team/keras/issues/5818#issuecomment-288516239
-        # According to the article ^ seems like epoch doesn't mean what we think it means.
-        epochs = 1,
+        # Number of epochs
+        epochs = 10,
         # Validation data (will not be trained on)
         validation_data = testData,
         validation_steps = testBatches,
@@ -129,7 +129,7 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
 
     # Batch size (# of samples to have LSTM train at a time)
     # It's okay if this does not evenly divide your entire sample set
-    batchSize = 400
+    batchSize = 500
 
     # Sequence lengths (should be all the same. they should be padded)
     maxLen = 0
@@ -160,10 +160,11 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
 
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, maxLen, len(labelMap))
-        # Print accuracies
-        print ''
-        print hist.history
+        # Print accuracy histories over the folds
+#       print ''
+#       print hist.history
 
+        # Save trained model
         # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
         # Convert model to JSON format to be stored
         modelJSON = lstm.to_json()
@@ -178,13 +179,37 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         # Run predictions over test data one last time to get final results
         # https://keras.io/models/model/#predict_generator
         p = lstm.predict_generator(testData, steps=test_num_batches, use_multiprocessing=True)
+
         # Extract predicted classes for each sample in testData
         # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
         predictClasses = p.argmax(axis=-1)
-        trueClasses = list()
-        for x,y in testData:
+
+        # NOTE: Sloppy way of doing this, but it'll work for now
+        # Extract true labels for training and testing data
+        trueClassesTest = list()
+        trueClassesTrain = list()
+        for e,d in enumerate(testData):
+            x = d[0]
+            y = d[1]
+
+            # Retrieve label for this input (x)
             for l in y:
-                trueClasses.append(l[0])
+                trueClassesTest.append(l[0])
+
+            # If we've reached the end of our testing data, break
+            if e == (test_num_batches - 1):
+                break
+        for e,d in enumerate(trainData):
+            x = d[0]
+            y = d[1]
+
+            # Retrieve label for this input (x)
+            for l in y:
+                trueClassesTrain.append(l[0])
+
+            # If we've reached the end of our training data, break
+            if e == (train_num_batches - 1):
+                break
 
         # Print AUC
         # NOTE: there are issues with doing this currently:
@@ -194,20 +219,26 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
 #       auc = roc_auc_score(trueClasses,predictClasses)
 #       print 'AUC: {0}'.format(auc)
 
-        # Print counts of each label for fold (combination of labels from train and test since
-        # it's no guaranteed they'll have the same labels)
-        c = Counter(trueClasses) + Counter(predictClasses)
-        foldLabelMap = sorted(c.keys())
+        # Print counts of each label for fold
+        c = Counter(trueClassesTrain)
         print ''
-        print 'Fold Indices/Counts (fold dataset):'
-        for e,l in enumerate(foldLabelMap):
+        print 'Fold Indices/Counts (train dataset):'
+        for e,l in enumerate(sorted(c.keys())):
             sys.stdout.write('Index: {0: <10} Class: {1: <20} Count: {2: <10} ({3:.4f}% of fold dataset)\n'.format(e,l,c[l],100*float(c[l])/sum(c.values())))
+
+        # Print counts of each label for fold
+        c = Counter(trueClassesTest)
+        print ''
+        print 'Fold Indices/Counts (test dataset):'
+        for e,l in enumerate(sorted(c.keys())):
+            sys.stdout.write('Index: {0: <10} Class: {1: <20} Count: {2: <10} ({3:.4f}% of fold dataset)\n'.format(e,l,c[l],100*float(c[l])/sum(c.values())))
+
 
         # Print confusion matrix
         # http://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
-        cf = confusion_matrix(trueClasses,predictClasses)
+        cf = confusion_matrix(trueClassesTest,predictClasses)
         print ''
-        print 'Confusion Matrix (fold dataset): (x-axis: Actual, y-axis: Predicted)'
+        print 'Confusion Matrix (test dataset): (x-axis: Actual, y-axis: Predicted)'
         for x in cf:
             for y in x:
                 sys.stdout.write('{0} '.format(y))
