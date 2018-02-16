@@ -111,7 +111,7 @@ def extract_features(folder, samples, label_fn, feature_folder):
 
     #TODO - Truncate datasets more intelligently
     # https://machinelearningmastery.com/handle-long-sequences-long-short-term-memory-recurrent-neural-networks/
-    longest = 300
+    longest = 1000
     print 'Truncating to length: {0}'.format(longest)
 
     # Create argument pools

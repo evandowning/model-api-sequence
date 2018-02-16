@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix,roc_auc_score
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM, Activation
+from keras.layers import Dense, LSTM, Activation, Dropout, ConvLSTM2D
 from keras import callbacks as cb
 
 # Creates multiple generators of the data to use on Keras
@@ -86,6 +86,13 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         )
 
     # https://keras.io/layers/core/#dense
+    model.add(Dense(128))
+    # https://keras.io/activations/
+    model.add(Activation('relu'))
+
+    # https://keras.io/layers/core/#dropout
+    model.add(Dropout(0.5))
+
     model.add(Dense(class_count, name='logits'))
     model.add(Activation('softmax'))
 
@@ -111,7 +118,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
         # Number of epochs
-        epochs = 10,
+        epochs = 100,
         # Validation data (will not be trained on)
         validation_data = testData,
         validation_steps = testBatches,
@@ -129,7 +136,7 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
 
     # Batch size (# of samples to have LSTM train at a time)
     # It's okay if this does not evenly divide your entire sample set
-    batchSize = 500
+    batchSize = 300
 
     # Sequence lengths (should be all the same. they should be padded)
     maxLen = 0
