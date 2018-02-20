@@ -10,7 +10,8 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix,roc_auc_score
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM, Activation, Dropout, ConvLSTM2D
+from keras.layers import Dense, LSTM, Activation, Dropout, Embedding, Conv1D, MaxPooling1D
+from keras import optimizers
 from keras import callbacks as cb
 
 # Creates multiple generators of the data to use on Keras
@@ -31,16 +32,12 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
             with open(path, 'rb') as fr:
                 x = pkl.load(fr)
 
-            # Here we put each api into its own array of size one.
-            # This sounds silly, but it's how Keras works for a dataset like api call sequences
-            # It's because for us, there's only one feature per line in the sequence.
-            # In Keras, it is possible to have multiple features per line in a sequence.
-            # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
-            xSet.append([list([seq]) for seq in x])
+            # Append sequence of api calls (i.e., a python list)
+            xSet.append(x)
 
             # We convert labels to numbers (we could have used Keras' categorical
             # functionality to convert it to an appropriate hot encoding instead,
-            # but I like this better because it looks cleaner)
+            # but I like this better)
             ySet.append(list([labelMap.index(labels[sample[i]])]))
 
             # Batch size reached, yield data
@@ -71,16 +68,23 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
 
     model = Sequential()
 
+    # We need to add an embedding layer because LSTM (at this moment) that the API call indices (numbers)
+    # are of some mathematical significance. E.g., system call 2 is "closer" to system calls 3 and 4.
+    # But system call numbers have nothing to do with their semantic meaning and relation to other
+    # system calls. So we transform it using an embedding layer so the LSTM can figure these relationships
+    # out for itself.
+    # https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html
+    # +1 because 0 is our padding number
+
+    #TODO - don't hard-code this
+    api_count = 258+1
+    model.add(Embedding(input_dim=api_count, output_dim=256, input_length=maxLen))
+
+    # https://keras.io/layers/recurrent/#lstm
     model.add(
-        # https://keras.io/layers/recurrent/#lstm
-        # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
         LSTM(
             num_units,
-            # https://keras.io/getting-started/sequential-model-guide/#specifying-the-input-shape
-            # maxLen is the length of each sample's sequence length, 1 is the dimension of the feature.
-            # In our case the feature dimension is 1 because each api call is a single feature (explained more
-            # in https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/)
-            input_shape=(maxLen, 1),
+            input_shape=(maxLen, api_count),
             return_sequences=False
             )
         )
@@ -96,11 +100,14 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     model.add(Dense(class_count, name='logits'))
     model.add(Activation('softmax'))
 
+    # Which optimizer to use
+    # https://keras.io/optimizers/
+    opt = optimizers.RMSprop(lr=0.01)
+
     # https://keras.io/models/model/#compile
     model.compile(
         loss='sparse_categorical_crossentropy',
-        # Which optimizer to use: https://keras.io/optimizers/
-        optimizer='rmsprop',
+        optimizer=opt,
         # Metrics to print
         # We use sparse_categorical_accuracy as opposed to categorical_accuracy
         # because: https://stackoverflow.com/questions/44477489/keras-difference-between-categorical-accuracy-and-sparse-categorical-accuracy

@@ -27,7 +27,7 @@ def get_sequences(folder, sample, maxLen, feature_folder):
             line = line.strip('\n')
 
             # Add API call if we've never seen it before
-            if not line in apiMap:
+            if line not in apiMap:
                 apiMap.append(line)
 
             # Get number of this API call
