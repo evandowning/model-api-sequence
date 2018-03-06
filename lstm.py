@@ -17,7 +17,7 @@ from keras import callbacks as cb
 # Creates multiple generators of the data to use on Keras
 # We do this because we can have very large datasets we can't
 # fit entirely into memory.
-def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
+def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize, windowSize):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
     while 1:
         xSet = list()
@@ -32,13 +32,27 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
             with open(path, 'rb') as fr:
                 x = pkl.load(fr)
 
+            #TODO - make this a parameter
+           # windowSize = 1000
+
+            # Make successive sequence for window size
+            remainder = len(x) % windowSize
+            if remainder > 0:
+                paddingSize = windowSize - remainder
+                x.extend([0]*paddingSize)
+
+            # Insert windowed inputs
+            for w in range(0,len(x),windowSize):
+                xSet.append(x[w:w+windowSize])
+                ySet.append(list([labelMap.index(labels[sample[i]])]))
+
             # Append sequence of api calls (i.e., a python list)
-            xSet.append(x)
+            #xSet.append(x)
 
             # We convert labels to numbers (we could have used Keras' categorical
             # functionality to convert it to an appropriate hot encoding instead,
             # but I like this better)
-            ySet.append(list([labelMap.index(labels[sample[i]])]))
+            #ySet.append(list([labelMap.index(labels[sample[i]])]))
 
             # Batch size reached, yield data
             if (e+1) % batchSize == 0:
@@ -90,6 +104,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
         )
 
     # https://keras.io/layers/core/#dense
+    #model.add(GRU(12))
     model.add(Dense(128))
     # https://keras.io/activations/
     model.add(Activation('relu'))
@@ -137,7 +152,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, sample, labels, labelMap, model_folder):
+def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize):
     # Number of folds in cross validation
     nFolds = 10
 
@@ -150,7 +165,9 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
     path = os.path.join(folder,sample[0]+'.pkl')
     with open(path, 'rb') as fr:
         x = pkl.load(fr)
-        maxLen = len(x)
+
+        # TODO - this is the windowSize from above
+        maxLen = windowSize
 
     print 'Sequence length of each sample: {0}'.format(maxLen)
 
@@ -165,8 +182,8 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
 
         # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize)
-        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize)
+        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize, windowSize)
+        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize, windowSize)
 
         # Calculate number of batches
         train_num_batches = math.ceil(float(len(trainFold))/batchSize)
@@ -278,17 +295,21 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         print 'TPR: {0}\nFPR: {1}\nFNR: {2}\nTNR: {3}\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
         print 'ACC: {0}\n'.format(list(ACC))
 
+        #TODO - only train one fold
+        break
+
 def usage():
-    print 'usage: python lstm.py features/labels features/ models/'
+    print 'usage: python lstm.py features/labels features/ models/ windowsize'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         usage()
 
     label_fn = sys.argv[1]
     folder = sys.argv[2]
     model_folder = sys.argv[3]
+    windowSize = int(sys.argv[4])
 
     # Remove model folder if it already exists
     if os.path.exists(model_folder):
@@ -326,7 +347,7 @@ def _main():
     print ''
 
     # Train LSTM
-    train_lstm(folder, sample, labels, labelMap, model_folder)
+    train_lstm(folder, sample, labels, labelMap, model_folder, windowSize)
 
 if __name__ == '__main__':
     _main()

@@ -39,8 +39,8 @@ def get_sequences(folder, sample, maxLen, feature_folder):
 
             # If sequence is longer than maxLen, break.
             # This is used to truncate data
-            if len(seq) == maxLen:
-                break
+#           if len(seq) == maxLen:
+#               break
 
     # If no sequences for this sample, print this out
     if len(seq) == 0:
@@ -64,9 +64,10 @@ def get_sequences(folder, sample, maxLen, feature_folder):
         # https://github.com/keras-team/keras/issues/6776
         # https://stackoverflow.com/questions/46353720/how-to-process-a-large-image-in-keras
 
-        delta = maxLen - len(seq)
-        if delta > 0:
-            seq.extend([0]*delta)
+        # --- Pading is removed ---
+        #delta = maxLen - len(seq)
+        #if delta > 0:
+        #    seq.extend([0]*delta)
 
         # Write list of sequences to new file
         with open(newpath,'wb') as fw:
