@@ -203,6 +203,7 @@ def _main():
     for l,c in counts.most_common():
         # Only consider families with >= 10 samples
         if c < 10:
+#       if c < 0:
             break
         else:
             final_labels.add(l)

@@ -77,7 +77,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     # +1 because 0 is our padding number
 
     #TODO - don't hard-code this
-    api_count = 258+1
+    api_count = 404+1
     model.add(Embedding(input_dim=api_count, output_dim=256, input_length=maxLen))
 
     # https://keras.io/layers/recurrent/#lstm
@@ -277,6 +277,9 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         print 'Stats for each class (class is index in these arrays)'
         print 'TPR: {0}\nFPR: {1}\nFNR: {2}\nTNR: {3}\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
         print 'ACC: {0}\n'.format(list(ACC))
+
+        # TODO - for debugging
+        break
 
 def usage():
     print 'usage: python lstm.py features/labels features/ models/'
