@@ -33,7 +33,7 @@ def numSequences_wrapper(args):
 # Creates multiple generators of the data to use on Keras
 # We do this because we can have very large datasets we can't
 # fit entirely into memory.
-def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize, windowSize):
+def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize, windowSize, task):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
     while 1:
         xSet = np.array([])
@@ -59,16 +59,42 @@ def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize, win
             index = np.arange(windowSize)[None,:] + np.arange(len(x)-windowSize+1)[:,None]
 
             # Insert sliding windowed inputs
-            for w in x[index]:
+            for e,w in enumerate(x[index]):
                 # If this is the first element
                 if len(xSet) == 0:
-                    xSet = w
-                    ySet = [labelMap.index(labels[sample[i]])]
-                # Else, keep the shape
-                else:
-                    xSet = np.vstack([xSet,w])
-                    ySet = np.vstack([ySet,[labelMap.index(labels[sample[i]])]])
 
+                    # Label API call sequences as being apart of a particular class
+                    if task == 'classification':
+                        # Extract API call sequences
+                        xSet = w
+                        # Extract label
+                        ySet = [labelMap.index(labels[sample[i]])]
+
+                    # Label API call sequences as being before the next API call
+                    elif task == 'regression':
+                        # Make sure we're not going to go out of bounds
+                        if e > len(x[index])-2:
+                            break
+
+                        # Extract API call sequences
+                        xSet = w
+                        # Extract label
+                        ySet = [x[e+windowSize]]
+
+                # Else, keep the shape and read in the rest of the features and labels
+                else:
+                    if task == 'classification':
+                        xSet = np.vstack([xSet,w])
+                        ySet = np.vstack([ySet,[labelMap.index(labels[sample[i]])]])
+                    elif task == 'regression':
+                        # Make sure we're not going to go out of bounds
+                        if e > len(x[index])-2:
+                            break
+
+                        xSet = np.vstack([xSet,w])
+                        ySet = np.vstack([ySet,[x[e+windowSize]]])
+
+                # Increase count of number of sample features extracted
                 num += 1
 
                 # Batch size reached, yield data
@@ -168,7 +194,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls):
+def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls, task):
     # Number of folds in cross validation
     nFolds = 10
 
@@ -192,8 +218,8 @@ def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCa
         print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
 
         # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize, windowSize)
-        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize, windowSize)
+        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize, windowSize, task)
+        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize, windowSize, task)
 
         # Count number of sequences we'll be passing to the LSTM
         numTrain = 0
@@ -231,7 +257,12 @@ def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCa
         print 'Testing batches: {0}'.format(test_num_batches)
 
         # Train LSTM model
-        lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, len(labelMap), numCalls)
+        lstm = None
+        hist = None
+        if task == 'classification':
+            lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, len(labelMap), numCalls)
+        elif task == 'regression':
+            lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, numCalls+1, numCalls)
         # Print accuracy histories over the folds
 #       print ''
 #       print hist.history
@@ -337,11 +368,15 @@ def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCa
         print 'ACC: {0}\n'.format(list(ACC))
 
 def usage():
-    print 'usage: python lstm.py features/labels features/ models/ windowsize number_of_unique_api_calls'
+    print 'usage: python lstm.py features/labels features/ models/ windowsize number_of_unique_api_calls {classification | regression}'
+    print ''
+    print '    classification: classes are malware family label'
+    print '    regression: classes are the next API call in the sequence immediately after the sliding window'
+    print ''
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         usage()
 
     label_fn = sys.argv[1]
@@ -349,6 +384,12 @@ def _main():
     model_folder = sys.argv[3]
     windowSize = int(sys.argv[4])
     numCalls = int(sys.argv[5])
+    task = sys.argv[6]
+
+    # Test first parameter
+    if (task != 'classification') and (task != 'regression'):
+        print 'Error. First parameter is not "classification" or "regression"'
+        usage()
 
     # Remove model folder if it already exists
     if os.path.exists(model_folder):
@@ -386,7 +427,7 @@ def _main():
     print ''
 
     # Train LSTM
-    train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls)
+    train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls, task)
 
 if __name__ == '__main__':
     _main()

@@ -73,6 +73,11 @@ $ python lstm.py features/labels features/ models/ windowSize numCalls > out.txt
 # feature extraction for each malware sample. "numCalls" is the number of unique
 # API calls outputed to STDOUT by preprocess.py
 
+# Note that for regression, samples whose full API sequence is less than
+# or equal to the windowSize will not be used to model. This logic occurs in 
+# sequence_generator() where we detect if the next API call will cause us
+# to read out-of-bounds in the array.
+
 # "out.txt" will store the detailed output of training and testing your LSTM
 ```
 
@@ -82,8 +87,27 @@ $ python preprocess.py /data/arsa/api-sequences/ \
                        /data/arsa/api-sequences.labels \
                        /data/arsa/api-sequences-features/
 
+Read in labels of all samples...
+Samples to extract: 20
+Getting sequence stats...
+Samples with sequences of length > 0: 20
+Shortest sequence: 115
+Longest sequence: 13279
+Avg. sequence length: 4144.4
+Extracting sample sequences (will ignore sequences which have no length): 20
+Number of unique API calls found: 192
+
 $ python lstm.py /data/arsa/api-sequences-features/labels \
                  /data/arsa/api-sequences-features/ \
                  /data/arsa/api-sequences-models/ \
-                 1000 464 > out.txt
+                 1000 \
+                 192 \
+                 classification > out.txt
+
+$ python lstm.py /data/arsa/api-sequences-features/labels \
+                 /data/arsa/api-sequences-features/ \
+                 /data/arsa/api-sequences-models/ \
+                 1000 \
+                 192 \
+                 regression > out.txt
 ```

@@ -71,21 +71,28 @@ def extract_features(folder, samples, label_fn, feature_folder):
     args = [(folder,s) for s,l in samples.iteritems()]
 
     # Determine longest API sequence length
+    num = 0
     longest = 0
     shortest = -1
     total = 0
     pool = Pool(10)
     results = pool.imap_unordered(get_length_wrapper, args)
     for r in results:
-        if (shortest == -1) and (r > 0):
+        if r == 0:
+            continue
+        num += 1
+
+        if shortest == -1:
             shortest = r
         if r > longest:
             longest = r
-        if (r < shortest) and (r > 0):
+        if r < shortest:
             shortest = r
         total += r
     pool.close()
     pool.join()
+
+    print 'Samples with sequences of length > 0: {0}'.format(num)
 
     # Calculate average length
     avg = total / float(len(samples))
@@ -120,7 +127,7 @@ def extract_features(folder, samples, label_fn, feature_folder):
             with open(label_fn,'a') as fa:
                 fa.write('{0} {1}\n'.format(s,l))
 
-        sys.stdout.write('Extracting sample sequences: {0}\r'.format(e+1))
+        sys.stdout.write('Extracting sample sequences (will ignore sequences which have no length): {0}\r'.format(e+1))
         sys.stdout.flush()
     sys.stdout.write('\n')
     sys.stdout.flush()
