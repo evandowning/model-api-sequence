@@ -10,7 +10,7 @@ from collections import Counter
 apiMap = list()
 
 # Extracts features from samples
-def get_sequences(folder, sample, maxLen, feature_folder):
+def get_sequences(folder, sample, feature_folder):
     global apiMap
 
     # To keep track of number of API calls
@@ -37,37 +37,10 @@ def get_sequences(folder, sample, maxLen, feature_folder):
             # Add number to list
             seq.append(num)
 
-            # If sequence is longer than maxLen, break.
-            # This is used to truncate data
-            if len(seq) == maxLen:
-                break
-
     # If no sequences for this sample, print this out
     if len(seq) == 0:
         return 'Sample {0} has no sequence'.format(sample)
     else:
-        # Pad remaining sequences. Since we +1 all indices of the API call, the
-        # number 0 is left for us to use as padding.
-        # Padding can sound like a stupid idea, but it's been proven to work
-        # and be used by others:
-        # https://github.com/keras-team/keras/issues/2375
-        # https://stackoverflow.com/questions/34670112/how-to-deal-with-batches-with-variable-length-sequences-in-tensorflow#34675264
-        # https://www.tensorflow.org/versions/master/tutorials/seq2seq
-        # https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
-        # https://www.mathworks.com/help/nnet/examples/classify-sequence-data-using-lstm-networks.html?requestedDomain=true
-
-        # TODO: Maybe look into future solutions which don't require padding?
-        #       But I believe we can't use batching at that point (batching is
-        #       training the LSTM with batches of samples instead of one sample
-        #       at a time, which can save us a lot of time).
-        # https://machinelearningmastery.com/handle-long-sequences-long-short-term-memory-recurrent-neural-networks/
-        # https://github.com/keras-team/keras/issues/6776
-        # https://stackoverflow.com/questions/46353720/how-to-process-a-large-image-in-keras
-
-        delta = maxLen - len(seq)
-        if delta > 0:
-            seq.extend([0]*delta)
-
         # Write list of sequences to new file
         with open(newpath,'wb') as fw:
             pkl.dump(seq,fw)
@@ -92,27 +65,34 @@ def get_length_wrapper(args):
 def extract_features(folder, samples, label_fn, feature_folder):
     print 'Samples to extract: {0}'.format(len(samples.keys()))
 
-    print 'Getting longest API sequence...'
+    print 'Getting sequence stats...'
 
     # Create argument pools
     args = [(folder,s) for s,l in samples.iteritems()]
 
     # Determine longest API sequence length
     longest = 0
+    shortest = -1
+    total = 0
     pool = Pool(10)
     results = pool.imap_unordered(get_length_wrapper, args)
     for r in results:
+        if (shortest == -1) and (r > 0):
+            shortest = r
         if r > longest:
             longest = r
+        if (r < shortest) and (r > 0):
+            shortest = r
+        total += r
     pool.close()
     pool.join()
 
-    print 'Longest sequence: {0}'.format(longest)
+    # Calculate average length
+    avg = total / float(len(samples))
 
-    #TODO - Truncate datasets more intelligently
-    # https://machinelearningmastery.com/handle-long-sequences-long-short-term-memory-recurrent-neural-networks/
-    longest = 1000
-    print 'Truncating to length: {0}'.format(longest)
+    print 'Shortest sequence: {0}'.format(shortest)
+    print 'Longest sequence: {0}'.format(longest)
+    print 'Avg. sequence length: {0}'.format(avg)
 
     # Create argument pools
     args = [(folder,s,longest,feature_folder) for s,l in samples.iteritems()]
@@ -129,7 +109,7 @@ def extract_features(folder, samples, label_fn, feature_folder):
         s = t[0]
         l = t[1]
 
-        rv = get_sequences(folder,s,longest,feature_folder)
+        rv = get_sequences(folder,s,feature_folder)
 
         # Some error happened
         if rv != None:
@@ -198,10 +178,10 @@ def _main():
     #       on any singletons (labels with just one sample), so I chose to
     #       limit choosing labels with at least 10 samples within them.
     #       Is there a smarter way to do this?
+
     # Get final labels we'll only consider.
     # For example, only consider labels with at least 100 samples
     for l,c in counts.most_common():
-        # Only consider families with >= 10 samples
         if c < 10:
 #       if c < 0:
             break

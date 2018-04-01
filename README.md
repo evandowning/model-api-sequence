@@ -3,6 +3,7 @@
 This models api call sequences using LSTM
 
 ## Requirements
+  * Debian 8 (Jessie)
   * Python 2.7
   * keras 2.1.2
   * sklearn 0.19.1
@@ -53,14 +54,24 @@ accordingly.
 # Transform our sequences into data LSTM can work with
 $ python preprocess.py api-sequences-folder/ malware.labels features/
 
+# preprocess.py will use only the samples in malware.labels to extract the features
+# of. This is nice so we can be easily selective over which malware to extract :)
+
 # At this point we have a folder "features/" which contains a file "labels" which lists
 # all of the sample file names within the folder "features/" and their corresponding labels
 
+# preprocess.py will also print out the number of unique API calls found
+# which will be used as a parameter to lstm.py
+
 # Train LSTM model
-$ python lstm.py features/labels features/ models/ > out.txt
+$ python lstm.py features/labels features/ models/ windowSize numCalls > out.txt
 
 # "models/" will be removed every time lstm.py is run. This folder stores all
 # of the models in JSON form to be imported and used by Keras in the future.
+
+# "windowSize" is the size of the window of API calls to perform sliding window
+# feature extraction for each malware sample. "numCalls" is the number of unique
+# API calls outputed to STDOUT by preprocess.py
 
 # "out.txt" will store the detailed output of training and testing your LSTM
 ```
@@ -73,5 +84,6 @@ $ python preprocess.py /data/arsa/api-sequences/ \
 
 $ python lstm.py /data/arsa/api-sequences-features/labels \
                  /data/arsa/api-sequences-features/ \
-                 /data/arsa/api-sequences-models/ > out.txt
+                 /data/arsa/api-sequences-models/ \
+                 1000 464 > out.txt
 ```

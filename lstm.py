@@ -5,6 +5,7 @@ import cPickle as pkl
 import numpy as np
 import math
 from collections import Counter
+from multiprocessing import Pool
 
 from sklearn.model_selection import KFold
 from sklearn.metrics import confusion_matrix,roc_auc_score
@@ -14,50 +15,82 @@ from keras.layers import Dense, LSTM, Activation, Dropout, Embedding, Conv1D, Ma
 from keras import optimizers
 from keras import callbacks as cb
 
+# Determines how many sequences we'll be giving to the LSTM
+def numSequences(folder, sample, foldID, windowSize):
+    rv = 0
+
+    # Read in sample's sequence and convert it a sequence integers
+    path = os.path.join(folder,sample[foldID]+'.pkl')
+    with open(path, 'rb') as fr:
+        x = pkl.load(fr)
+        rv = len(x)-windowSize+1
+
+    return rv
+
+def numSequences_wrapper(args):
+    return numSequences(*args)
+
 # Creates multiple generators of the data to use on Keras
 # We do this because we can have very large datasets we can't
 # fit entirely into memory.
-def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize):
+def sequence_generator(folder, sample, labels, labelMap, foldIDs, batchSize, windowSize):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
     while 1:
-        xSet = list()
-        ySet = list()
+        xSet = np.array([])
+        ySet = np.array([])
 
-        for e,i in enumerate(foldIDs):
-            x = list()
-            y = list()
+        num = 0;
+        for i in foldIDs:
+            x = np.array([])
+            y = np.array([])
 
             # Read in sample's sequence and convert it a sequence integers
             path = os.path.join(folder,sample[i]+'.pkl')
             with open(path, 'rb') as fr:
-                x = pkl.load(fr)
+                x = np.array(pkl.load(fr))
 
-            # Append sequence of api calls (i.e., a python list)
-            xSet.append(x)
+            # Pad sequence to window size if necessary
+            remainder = windowSize - len(x)
+            if remainder > 0:
+                x = np.append(x,[0]*remainder)
 
-            # We convert labels to numbers (we could have used Keras' categorical
-            # functionality to convert it to an appropriate hot encoding instead,
-            # but I like this better)
-            ySet.append(list([labelMap.index(labels[sample[i]])]))
+            # From: https://stackoverflow.com/questions/15722324/sliding-window-in-numpy/42258242#42258242
+            # Construct sliding windows
+            index = np.arange(windowSize)[None,:] + np.arange(len(x)-windowSize+1)[:,None]
 
-            # Batch size reached, yield data
-            if (e+1) % batchSize == 0:
-                # Here we convert our lists into Numpy arrays because
-                # Keras requires it as input for its fit_generator()
-                x = np.array(xSet)
-                y = np.array(ySet)
+            # Insert sliding windowed inputs
+            for w in x[index]:
+                # If this is the first element
+                if len(xSet) == 0:
+                    xSet = w
+                    ySet = [labelMap.index(labels[sample[i]])]
+                # Else, keep the shape
+                else:
+                    xSet = np.vstack([xSet,w])
+                    ySet = np.vstack([ySet,[labelMap.index(labels[sample[i]])]])
 
-                xSet = list()
-                ySet = list()
+                num += 1
 
-                yield (x, y)
+                # Batch size reached, yield data
+                if num % batchSize == 0:
+                    # Here we convert our lists into Numpy arrays because
+                    # Keras requires it as input for its fit_generator()
+                    rv_x = xSet
+                    rv_y = ySet
+
+                    xSet = np.array([])
+                    ySet = np.array([])
+
+                    num = 0
+
+                    yield (rv_x, rv_y)
 
         # Yield remaining set
         if len(xSet) > 0:
-            yield (np.array(xSet), np.array(ySet))
+            yield (xSet, ySet)
 
 # Builds LSTM model
-def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, class_count):
+def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize, class_count, numCalls):
     # TODO - What is this?
     # Specify number of units
     # https://stackoverflow.com/questions/37901047/what-is-num-units-in-tensorflow-basiclstmcell#39440218
@@ -74,17 +107,15 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     # system calls. So we transform it using an embedding layer so the LSTM can figure these relationships
     # out for itself.
     # https://blog.keras.io/a-ten-minute-introduction-to-sequence-to-sequence-learning-in-keras.html
-    # +1 because 0 is our padding number
 
-    #TODO - don't hard-code this
-    api_count = 404+1
-    model.add(Embedding(input_dim=api_count, output_dim=256, input_length=maxLen))
+    api_count = numCalls+1  # +1 because 0 is our padding number
+    model.add(Embedding(input_dim=api_count, output_dim=256, input_length=windowSize))
 
     # https://keras.io/layers/recurrent/#lstm
     model.add(
         LSTM(
             num_units,
-            input_shape=(maxLen, api_count),
+            input_shape=(windowSize, api_count),
             return_sequences=False
             )
         )
@@ -102,7 +133,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
 
     # Which optimizer to use
     # https://keras.io/optimizers/
-    opt = optimizers.RMSprop(lr=0.01)
+    opt = optimizers.RMSprop(lr=0.01,decay=0.001)
 
     # https://keras.io/models/model/#compile
     model.compile(
@@ -137,22 +168,18 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, maxLen, cla
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, sample, labels, labelMap, model_folder):
+def train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls):
     # Number of folds in cross validation
     nFolds = 10
 
     # Batch size (# of samples to have LSTM train at a time)
     # It's okay if this does not evenly divide your entire sample set
-    batchSize = 300
+    batchSize = 500
 
     # Sequence lengths (should be all the same. they should be padded)
-    maxLen = 0
     path = os.path.join(folder,sample[0]+'.pkl')
     with open(path, 'rb') as fr:
         x = pkl.load(fr)
-        maxLen = len(x)
-
-    print 'Sequence length of each sample: {0}'.format(maxLen)
 
     # Get folds for cross validation
     folds = KFold(n_splits=nFolds, shuffle=True)
@@ -165,15 +192,46 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
 
         # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize)
-        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize)
+        trainData = sequence_generator(folder, sample, labels, labelMap, trainFold, batchSize, windowSize)
+        testData = sequence_generator(folder, sample, labels, labelMap, testFold, batchSize, windowSize)
+
+        # Count number of sequences we'll be passing to the LSTM
+        numTrain = 0
+        # Create argument pools
+        args = [(folder,sample,i,windowSize) for i in trainFold]
+        pool = Pool(10)
+        results = pool.imap_unordered(numSequences_wrapper, args)
+        for e,r in enumerate(results):
+            numTrain += r
+            sys.stdout.write('Counting sequences: {0}/{1}\r'.format(e+1,len(trainFold)))
+            sys.stdout.flush()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
+        # Count number of sequences we'll be passing to the LSTM
+        numTest = 0
+        # Create argument pools
+        args = [(folder,sample,i,windowSize) for i in testFold]
+        pool = Pool(10)
+        results = pool.imap_unordered(numSequences_wrapper, args)
+        for e,r in enumerate(results):
+            numTest += r
+            sys.stdout.write('Counting sequences: {0}/{1}\r'.format(e+1,len(testFold)))
+            sys.stdout.flush()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
         # Calculate number of batches
-        train_num_batches = math.ceil(float(len(trainFold))/batchSize)
-        test_num_batches = math.ceil(float(len(testFold))/batchSize)
+        train_num_batches = math.ceil(float(numTrain)/batchSize)
+        test_num_batches = math.ceil(float(numTest)/batchSize)
+
+        print 'Number of training sequences: {0}'.format(numTrain)
+        print 'Number of testing sequences: {0}'.format(numTest)
+        print 'Training batches: {0}'.format(train_num_batches)
+        print 'Testing batches: {0}'.format(test_num_batches)
 
         # Train LSTM model
-        lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, maxLen, len(labelMap))
+        lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, len(labelMap), numCalls)
         # Print accuracy histories over the folds
 #       print ''
 #       print hist.history
@@ -278,20 +336,19 @@ def train_lstm(folder, sample, labels, labelMap, model_folder):
         print 'TPR: {0}\nFPR: {1}\nFNR: {2}\nTNR: {3}\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
         print 'ACC: {0}\n'.format(list(ACC))
 
-        # TODO - for debugging
-        break
-
 def usage():
-    print 'usage: python lstm.py features/labels features/ models/'
+    print 'usage: python lstm.py features/labels features/ models/ windowsize number_of_unique_api_calls'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 6:
         usage()
 
     label_fn = sys.argv[1]
     folder = sys.argv[2]
     model_folder = sys.argv[3]
+    windowSize = int(sys.argv[4])
+    numCalls = int(sys.argv[5])
 
     # Remove model folder if it already exists
     if os.path.exists(model_folder):
@@ -329,7 +386,7 @@ def _main():
     print ''
 
     # Train LSTM
-    train_lstm(folder, sample, labels, labelMap, model_folder)
+    train_lstm(folder, sample, labels, labelMap, model_folder, windowSize, numCalls)
 
 if __name__ == '__main__':
     _main()
