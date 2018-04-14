@@ -52,7 +52,7 @@ accordingly.
 ## Usage
 ```
 # Transform our sequences into data LSTM can work with
-$ python preprocess.py api-sequences-folder/ malware.labels features/
+$ python preprocess.py api-sequences-folder/ malware.labels features/ windowSize {classification | regression}
 
 # preprocess.py will use only the samples in malware.labels to extract the features
 # of. This is nice so we can be easily selective over which malware to extract :)
@@ -60,54 +60,51 @@ $ python preprocess.py api-sequences-folder/ malware.labels features/
 # At this point we have a folder "features/" which contains a file "labels" which lists
 # all of the sample file names within the folder "features/" and their corresponding labels
 
+# "windowSize" is the size of the window of API calls to perform sliding window
+# feature extraction for each malware sample.
+
+# "regression" will ignore the labels within "malware.labels" and will instead label
+# the next API call in a sequence.
+
 # preprocess.py will also print out the number of unique API calls found
 # which will be used as a parameter to lstm.py
 
 # Train LSTM model
-$ python lstm.py features/labels features/ models/ windowSize numCalls > out.txt
+$ python lstm.py features/ models/ > out.txt
 
 # "models/" will be removed every time lstm.py is run. This folder stores all
 # of the models in JSON form to be imported and used by Keras in the future.
 
-# "windowSize" is the size of the window of API calls to perform sliding window
-# feature extraction for each malware sample. "numCalls" is the number of unique
-# API calls outputed to STDOUT by preprocess.py
-
-# Note that for regression, samples whose full API sequence is less than
-# or equal to the windowSize will not be used to model. This logic occurs in 
-# sequence_generator() where we detect if the next API call will cause us
-# to read out-of-bounds in the array.
-
 # "out.txt" will store the detailed output of training and testing your LSTM
+
+# Evaluate LSTM model
+$ python eval.py model.json weight.h5 train.pkl test.pkl
+
+# train.pkl and test.pkl are saved train/test fold to be used to construct
+# confusion matrix and other statistics
 ```
 
 ## Example
 ```
 $ python preprocess.py /data/arsa/api-sequences/ \
                        /data/arsa/api-sequences.labels \
-                       /data/arsa/api-sequences-features/
+                       /data/arsa/api-sequences-features/ \
+                       100 \
+                       regression
 
-Read in labels of all samples...
-Samples to extract: 20
+Reading in labels of all samples...
+Window Size: 100
+Samples to scan: 984
 Getting sequence stats...
-Samples with sequences of length > 0: 20
-Shortest sequence: 115
-Longest sequence: 13279
-Avg. sequence length: 4144.4
-Extracting sample sequences (will ignore sequences which have no length): 20
-Number of unique API calls found: 192
+Samples with sequences of length > 0: 983
+Shortest sequence: 54
+Longest sequence: 860563
+Avg. sequence length: 11363.2835366
+Extracting sample's sequences (will ignore sequences which have no length): 984
+Total number of subsequences: 110356
+Total number of extracted subsequences (i.e., what we'll train/test on): 66056
+Number of unique API calls found: 249
 
-$ python lstm.py /data/arsa/api-sequences-features/labels \
-                 /data/arsa/api-sequences-features/ \
-                 /data/arsa/api-sequences-models/ \
-                 1000 \
-                 192 \
-                 classification > out.txt
-
-$ python lstm.py /data/arsa/api-sequences-features/labels \
-                 /data/arsa/api-sequences-features/ \
-                 /data/arsa/api-sequences-models/ \
-                 1000 \
-                 192 \
-                 regression > out.txt
+$ python lstm.py /data/arsa/api-sequences-features/ \
+                 /data/arsa/api-sequences-models/ > out.txt
 ```
