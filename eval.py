@@ -79,8 +79,9 @@ def stats(lstm,data,num_batches):
     print 'TPR: {0}\n\nFPR: {1}\n\nFNR: {2}\n\nTNR: {3}\n\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
     print 'ACC: {0}\n'.format(list(ACC))
 
-
-    # Print out loss function
+    # https://stackoverflow.com/questions/46861966/how-to-find-loss-values-using-keras
+    # https://keras.io/losses/#sparse_categorical_crossentropy
+    # Print out loss and accuracy
     trueClasses = np.array(trueClasses)
     t = trueClasses.reshape((1,len(trueClasses),1))[0]
     y_true = K.variable(t)
