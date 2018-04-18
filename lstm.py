@@ -14,76 +14,6 @@ from keras.layers import Dense, LSTM, Activation, Dropout, Embedding, Conv1D, Ma
 from keras import optimizers
 from keras import callbacks as cb
 
-# Creates multiple generators of the data to use on Keras
-# We do this because we can have very large datasets we can't
-# fit entirely into memory.
-def sequence_generator_old(folder, sample, foldIDs, batchSize):
-    # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
-    while 1:
-        xSet = np.array([])
-        ySet = np.array([])
-
-        num = 0;
-        for i in foldIDs:
-            x = np.array([])
-            y = np.array([])
-
-            #TODO - potentially a bottleneck if this takes too long
-            # If this is a bottleneck, just fold over each file (not each sequence)
-
-            # Determine specific file and line number to extract from
-            si = 0
-            sj = 0
-            c = 0
-            for e,t in enumerate(sample):
-                l,count = t
-                if c+count > i:
-                    sj = i-c
-                    break
-                c+=count
-            si = e
-
-            # Read in sample's sequence
-            path = os.path.join(folder,sample[si][0]+'.pkl')
-            e = 0
-            with open(path, 'rb') as fr:
-                for e in range(sj+1):
-                    t = pkl.load(fr)
-
-                    # If we've found our line
-                    if e == sj:
-                        x = t[0]
-                        y = t[1]
-                        break
-
-            if len(xSet) == 0:
-                xSet = x
-                ySet = [y]
-            else:
-                xSet = np.vstack([xSet,x])
-                ySet = np.vstack([ySet,[y]])
-
-            # Increase count of number of sample features extracted
-            num += 1
-
-            # Batch size reached, yield data
-            if num % batchSize == 0:
-                # Here we convert our lists into Numpy arrays because
-                # Keras requires it as input for its fit_generator()
-                rv_x = xSet
-                rv_y = ySet
-
-                xSet = np.array([])
-                ySet = np.array([])
-
-                num = 0
-
-                yield (rv_x, rv_y)
-
-        # Yield remaining set
-        if len(xSet) > 0:
-            yield (xSet, ySet)
-
 # Trains on per sample (i.e., file)
 def sequence_generator(folder, sample, foldIDs, batchSize):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
@@ -167,6 +97,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
             )
         )
 
+    # https://stackoverflow.com/questions/40331510/how-to-stack-multiple-lstm-in-keras
+
     # https://keras.io/layers/core/#dense
     model.add(Dense(128))
     # https://keras.io/activations/
@@ -241,7 +173,6 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls)
         trainData = sequence_generator(folder, sample, trainFold, batchSize)
         testData = sequence_generator(folder, sample, testFold, batchSize)
 
-        #TODO
         # Calculate number of batches
         numTrainSeq = 0
         for i in trainFold:
@@ -279,11 +210,45 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls)
         # Save train/test fold to be used by eval.py
         fn = os.path.join(model_folder,'fold{0}-train.pkl'.format(foldCount))
         with open(fn,'wb') as fw:
-            pkl.dump(trainData,fw)
+            # Write the number of data we'll have in this file
+            pkl.dump(train_num_batches,fw)
+
+            # Loop through generator
+            i = 0
+            for g in trainData:
+                # If we've reached the end of the generator
+                if i == train_num_batches:
+                    break
+
+                # Write data to file
+                pkl.dump(g,fw)
+                i += 1
+
+                sys.stdout.write('Saving training fold data: {0}/{1}\r'.format(i,train_num_batches))
+                sys.stdout.flush()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
         fn = os.path.join(model_folder,'fold{0}-test.pkl'.format(foldCount))
         with open(fn,'wb') as fw:
-            pkl.dump(test_num_batches)
-            pkl.dump(testData,fw)
+            # Write the number of data we'll have in this file
+            pkl.dump(test_num_batches,fw)
+
+            # Loop through generator
+            i = 0
+            for g in testData:
+                # If we've reached the end of the generator
+                if i == test_num_batches:
+                    break
+
+                # Write data to file
+                pkl.dump(g,fw)
+                i += 1
+
+                sys.stdout.write('Saving testing fold data: {0}/{1}\r'.format(i,test_num_batches))
+                sys.stdout.flush()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
         #TODO - only do one fold for now
         break

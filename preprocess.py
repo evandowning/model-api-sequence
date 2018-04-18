@@ -57,6 +57,9 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
     if remainder > 0:
         seq = np.append(seq,[0]*remainder)
 
+    # Convert numpy array from array of strings to array of integers
+    seq = seq.astype('int64')
+
     # Calculate window indices: https://stackoverflow.com/questions/15722324/sliding-window-in-numpy/42258242#42258242
     index = np.arange(windowSize)[None,:] + windowSize*np.arange(len(seq)/windowSize)[:,None]
 

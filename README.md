@@ -78,10 +78,10 @@ $ python lstm.py features/ models/ > out.txt
 # "out.txt" will store the detailed output of training and testing your LSTM
 
 # Evaluate LSTM model
-$ python eval.py model.json weight.h5 train.pkl test.pkl
+$ python eval.py model.json weight.h5 train.pkl test.pkl > out.txt
 
 # train.pkl and test.pkl are saved train/test fold to be used to construct
-# confusion matrix and other statistics
+# confusion matrix and other statistics from running lstm.py
 ```
 
 ## Example
@@ -106,5 +106,10 @@ Total number of extracted subsequences (i.e., what we'll train/test on): 66056
 Number of unique API calls found: 249
 
 $ python lstm.py /data/arsa/api-sequences-features/ \
-                 /data/arsa/api-sequences-models/ > out.txt
+                 /data/arsa/api-sequences-models/ > out-lstm.txt
+
+$ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
+                 /data/arsa/api-sequences-models/fold1-weight.hd5 \
+                 /data/arsa/api-sequences-models/fold1-train.pkl \
+                 /data/arsa/api-sequences-models/fold1-test.pkl > out-eval.txt
 ```
