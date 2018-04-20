@@ -41,9 +41,10 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
     original = len(seq)
 
     # If sequence length is less than windowSize, we cannot do prediction
-    if len(seq) <= windowSize:
-        error = 'Sample {0} has sequence size <= to window size\n'.format(sample)
-        return error,None,None,None,None
+    if task == 'regression':
+        if len(seq) <= windowSize:
+            error = 'Sample {0} has sequence size <= to window size\n'.format(sample)
+            return error,None,None,None,None
 
     # Replace API calls with their unique integer value
     # https://stackoverflow.com/questions/3403973/fast-replacement-of-values-in-a-numpy-array#3404089
@@ -52,7 +53,7 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
         newseq[seq==k] = v
     seq = newseq
 
-    # Pad sequence to window size if necessary
+    # Pad sequence to be evenly divisible by window size if necessary
     remainder = len(seq) % windowSize
     if remainder > 0:
         seq = np.append(seq,[0]*remainder)
@@ -69,14 +70,15 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
     # New file path to put features into
     newpath = os.path.join(feature_folder,sample+'.pkl')
 
+    # If this is classification, we have to map the label to its integer representation
+    if task == 'classification':
+        label = labelMap[label]
+
     with open(newpath,'wb') as fw:
         # Insert each windowed sequence into the features file
         for e,w in enumerate(seq[index]): 
-            # If this is classification, we have to map the label to its integer representation
-            if task == 'classification':
-                label = labelMap.index(label)
             # If this is regression, we have to extract the next API call after the sequence
-            elif task == 'regression':
+            if task == 'regression':
                 # For the last sequence, we won't be able to get the next API call
                 if (e == len(index)-1) and (len(index) > 1):
                     break
@@ -154,8 +156,14 @@ def _main():
             # e+1 because we want 0 to be our padding integer
             apiMap[line] = e+1
 
-    #TODO - for classification
-    print 'Reading in label mapping file...'
+    print 'Reading in label.txt file...'
+
+    # Create a map between malware family label and their integer representation
+    labelMap = dict()
+    with open('label.txt','r') as fr:
+        for e,line in enumerate(fr):
+            line = line.strip('\n')
+            labelMap[line] = e
 
     print 'Reading in samples to preprocess...'
 
@@ -175,6 +183,7 @@ def _main():
 
         # Get final labels we'll only consider.
         # For example, only consider labels with at least 100 samples
+        final_labels = set()
         for l,c in counts.most_common():
             if c < 10:
                 break
@@ -183,6 +192,9 @@ def _main():
 
         # Remove samples with the labels we're not interested in (i.e., not in "final_labels")
         final_samples = { k:v for k,v in samples.iteritems() if v in final_labels }
+
+        # Remove samples with labels we don't have in "label.txt"
+        final_samples = { k:v for k,v in samples.iteritems() if v in labelMap }
 
     # If this is a regression problem, we don't need to do this
     elif task == 'regression':

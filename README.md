@@ -46,8 +46,15 @@ E59905D5305FCC54909A875F4CC3F426A3A27584A461E1B16530FC2AD85A0693    familyA
 ...
 ```
 
+
+NOTE that the label "benign" is for benign files I've gathered. This is not a malware
+family.
+
 If your data is sorted or formatted in any other way, you can modify `preprocess.py`
 accordingly.
+
+If you want to add a new API call, add it to "api.txt"
+If you want to add a new malware famliy, add it to "label.txt"
 
 ## Usage
 ```
@@ -89,21 +96,19 @@ $ python eval.py model.json weight.h5 train.pkl test.pkl > out.txt
 $ python preprocess.py /data/arsa/api-sequences/ \
                        /data/arsa/api-sequences.labels \
                        /data/arsa/api-sequences-features/ \
-                       100 \
-                       regression
+                       32 \
+                       classification
 
-Reading in labels of all samples...
-Window Size: 100
-Samples to scan: 984
-Getting sequence stats...
-Samples with sequences of length > 0: 983
-Shortest sequence: 54
-Longest sequence: 860563
-Avg. sequence length: 11363.2835366
-Extracting sample's sequences (will ignore sequences which have no length): 984
-Total number of subsequences: 110356
-Total number of extracted subsequences (i.e., what we'll train/test on): 66056
-Number of unique API calls found: 249
+Reading in api.txt file...
+Reading in label.txt file...
+Reading in samples to preprocess...
+Window Size: 32
+Extracting sample's sequences: 8683/8683
+Total number of sequences extracted: 6890790
+Total number of PE samples extracted from: 7491
+Longest sequence length: 4182014
+Shortest sequence length which is > 0: 1
+Average sequence length: 29437.39
 
 $ python lstm.py /data/arsa/api-sequences-features/ \
                  /data/arsa/api-sequences-models/ > out-lstm.txt
