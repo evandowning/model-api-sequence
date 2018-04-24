@@ -216,6 +216,12 @@ def _main():
     # Create argument pools
     args = [(folder,s,l,feature_folder,windowSize,task) for s,l in final_samples.iteritems()]
 
+    # Debugging
+#   for folder,s,l,feature_folder,windowSize,task in args:
+#       print s
+#       extract(folder,s,l,feature_folder,windowSize,task)
+#   return
+
     # Extract features of samples
     total = 0
     longest = 0
