@@ -180,6 +180,7 @@ def _main():
         #       on any singletons (labels with just one sample), so I chose to
         #       limit choosing labels with at least 10 samples within them.
         #       Is there a smarter way to do this?
+
         # Get final labels we'll only consider.
         # For example, only consider labels with at least 100 samples
         final_labels = set()
@@ -193,7 +194,7 @@ def _main():
         final_samples = { k:v for k,v in samples.iteritems() if v in final_labels }
 
         # Remove samples with labels we don't have in "label.txt"
-        final_samples = { k:v for k,v in final_samples.iteritems() if v in labelMap }
+        final_samples = { k:v for k,v in samples.iteritems() if v in labelMap }
 
     # If this is a regression problem, we don't need to do this
     elif task == 'regression':

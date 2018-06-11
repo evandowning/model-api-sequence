@@ -10,70 +10,39 @@ from multiprocessing import Pool
 from sklearn.model_selection import KFold
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM, Activation, Dropout, Embedding, Conv1D, MaxPooling1D
+from keras.layers import Dense, LSTM, Activation, Dropout, Embedding
 from keras import optimizers
 from keras import callbacks as cb
+from keras.utils import generic_utils
 
 # Trains on per sample (i.e., file)
-def sequence_generator(folder, sample, foldIDs, batchSize):
-    # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
-    while 1:
-        xSet = np.array([])
-        ySet = np.array([])
+def sequence_generator(path,numSeq,maxNum):
 
-        num = 0;
-        for i in foldIDs:
-            x = np.array([])
-            y = np.array([])
+    label = None
 
-            # Extract sample's name and number of sequences
-            fn = sample[i][0]
-            numSeq = sample[i][1]
+    # Read in sample's sequences
+    with open(path, 'rb') as fr:
+        for e in enumerate(range(numSeq)):
+            t = pkl.load(fr)
+            x = t[0]
+            y = t[1]
+            label = y
 
-            # Read in sample's sequences
-            path = os.path.join(folder,fn+'.pkl')
-            with open(path, 'rb') as fr:
-                for e in enumerate(range(numSeq)):
-                    t = pkl.load(fr)
-                    x = t[0]
-                    y = t[1]
+            yield (x,np.array([y]))
 
-                    if len(xSet) == 0:
-                        xSet = x
-                        ySet = [y]
-                    else:
-                        xSet = np.vstack([xSet,x])
-                        ySet = np.vstack([ySet,[y]])
-
-                    # Increase count of number of sample features extracted
-                    num += 1
-
-                    # Batch size reached, yield data
-                    if num % batchSize == 0:
-                        # Here we convert our lists into Numpy arrays because
-                        # Keras requires it as input for its fit_generator()
-                        rv_x = xSet
-                        rv_y = ySet
-
-                        xSet = np.array([])
-                        ySet = np.array([])
-
-                        num = 0
-
-                        yield (rv_x, rv_y)
-
-        # Yield remaining set
-        if len(xSet) > 0:
-            yield (xSet, ySet)
+    # If we need to pad this trace
+    if maxNum > numSeq:
+        for e in range(maxNum-numSeq):
+            yield (np.zeros(32, dtype=int),np.array([label]))
 
 # Builds LSTM model
-def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize, class_count, numCalls, batch_size):
-    # TODO - What is this?
+def build_LSTM_model(folder, sample, trainFold, testFold, windowSize, class_count, numCalls, batchSize, maxNum):
     # Specify number of units
     # https://stackoverflow.com/questions/37901047/what-is-num-units-in-tensorflow-basiclstmcell#39440218
+    # https://colah.github.io/posts/2015-08-Understanding-LSTMs/
     num_units = 128
 
-    embedding_size = 256
+    embeddingSize = 256
 
     # https://keras.io/callbacks/#earlystopping
     early_stop = cb.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
@@ -89,10 +58,10 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 
     # https://stackoverflow.com/questions/40695452/stateful-lstm-with-embedding-layer-shapes-dont-match
     api_count = numCalls+1  # +1 because 0 is our padding number
-    model.add(Embedding(input_dim=api_count, output_dim=256, input_length=windowSize))
+    model.add(Embedding(input_dim=api_count, output_dim=embeddingSize, input_length=windowSize,batch_input_shape=(batchSize,windowSize)))
 
     # https://keras.io/layers/recurrent/#lstm
-    model.add(LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
+    model.add(LSTM(num_units,batch_input_shape=(batchSize,windowSize,embeddingSize),return_sequences=False,stateful=True))
 
     #TODO - If I want to add more layers
     # https://stackoverflow.com/questions/40331510/how-to-stack-multiple-lstm-in-keras
@@ -122,40 +91,95 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         # I.e., since we don't use hot-encoding, we use sparse_categorical_accuracy
         metrics=['sparse_categorical_accuracy'])
 
-    # https://keras.io/models/model/#fit_generator
-    hist = model.fit_generator(
-        # Data to train
-        trainData,
-        # Use multiprocessing because python Threading isn't really
-        # threading: https://docs.python.org/2/glossary.html#term-global-interpreter-lock
-        use_multiprocessing = True,
-        # Number of steps per epoch (this is how we train our large
-        # number of samples dataset without running out of memory)
-        steps_per_epoch = trainBatches,
-        # Number of epochs
-        epochs = 100,
-        # Validation data (will not be trained on)
-        validation_data = testData,
-        validation_steps = testBatches,
-        # Do not shuffle batches.
-        shuffle = False,
-        # List of callbacks to be called while training.
-        callbacks = [early_stop])
+    #TODO - testing https://philipperemy.github.io/keras-stateful-lstm/ methodology
+    for epoch in range(100):
+        training_accuracies = []
+        training_losses = []
 
-    return model, hist
+        progbar = generic_utils.Progbar(len(range(0,len(trainFold),batchSize))*maxNum)
+
+#       print len(trainFold)
+#       print batchSize
+
+        # Iterate through batches (i.e., batched traces)
+        for s in range(0,len(trainFold),batchSize):
+#           print s,s+batchSize-1
+
+            # List of generators of data
+            gens = list()
+
+#           print len(range(s,s+batchSize))
+
+            # Get generators for each trace to train
+            for t in range(s,s+batchSize):
+                # Extract trace's name and number of sequences
+                fn = sample[trainFold[t]][0]
+                numSeq = sample[trainFold[t]][1]
+                path = os.path.join(folder,fn+'.pkl')
+
+                # Get trace's data
+                g = sequence_generator(path,numSeq,maxNum)
+                gens.append(g)
+
+            # Convert to numpy array
+            gens = np.array(gens)
+
+#           print maxNum
+
+            # For each subsequence to train on in each trace
+            # maxNum is the maximum number of subsequences for traces
+            # (i.e., number of windows of windowSize)
+            for i in range(maxNum):
+#               print i
+
+                # Construct LSTM batch to train on
+                x = list()
+                y = list()
+
+                # For each trace, get position subsequence
+                for g in gens:
+                    # This will automatically get the next subsequence (index i)
+                    # in the trace
+                    xtmp,ytmp = g.next()
+                    x.append(xtmp)
+                    y.append(ytmp)
+
+                # Convert to numpy arrays
+                x = np.array(x)
+                y = np.array(y)
+
+#               print x
+#               print y
+
+                batch_loss, batch_accuracy = model.train_on_batch(x,y)
+#               print batch_loss, batch_accuracy
+                training_accuracies.append(batch_accuracy)
+                training_losses.append(batch_loss)
+
+#               if i == 3:
+#                   break
+
+                progbar.add(1, values=[("train loss", np.mean(training_losses)), ("acc", np.mean(training_accuracies))])
+
+            # Reset state
+            model.reset_states()
+
+        print "Epoch %.2d: loss: %0.3f accuracy: %0.3f"%(epoch, np.mean(training_losses),np.mean(training_accuracies))
+
+    return model
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls):
-    batchSize = 3000
+def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, maxNum):
+    # Batch size (# of samples to have LSTM train at a time)
+    # This should be divisible by the dataset size evenly
+    batchSize = 1000
 
     # Get folds for cross validation
     nFolds = 10
     folds = KFold(n_splits=nFolds, shuffle=True)
     foldCount = 0
 
-    # We're folding on each file (which contains multiple sequences to train/test)
-    # We do this for memory consumption reasons (i.e., it's hard to hold an array of 2 million lists within memory
-    # to keep track of each fold)
+    # Fold on traces
     numSamples = len(fileMap.keys())
     sample = [(k,v) for k,v in fileMap.iteritems()]
 
@@ -165,31 +189,34 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls)
         print '==========================================================='
         print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
 
-        # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, trainFold, batchSize)
-        testData = sequence_generator(folder, sample, testFold, batchSize)
+#       # Put features into format LSTM can ingest
+#       trainData = sequence_generator(folder, sample, trainFold, batchSize, windowSize, maxNum)
+#       testData = sequence_generator(folder, sample, testFold, batchSize, windowSize, maxNum)
 
-        # Calculate number of batches
-        numTrainSeq = 0
-        for i in trainFold:
-            numTrainSeq += sample[i][1]
-        numTestSeq = 0
-        for i in testFold:
-            numTestSeq += sample[i][1]
+#       # Calculate number of batches
+#       numTrainSeq = 0
+#       for i in trainFold:
+#           numTrainSeq += sample[i][1]
+#       numTestSeq = 0
+#       for i in testFold:
+#           numTestSeq += sample[i][1]
 
-        train_num_batches = math.ceil(float(numTrainSeq)/batchSize)
-        test_num_batches = math.ceil(float(numTestSeq)/batchSize)
+#       train_num_batches = math.ceil(float(numTrainSeq)/batchSize)
+#       test_num_batches = math.ceil(float(numTestSeq)/batchSize)
 
-        print 'Number of training sequences: {0}'.format(numTrainSeq)
-        print 'Number of testing sequences: {0}'.format(numTestSeq)
-        print 'Training batches: {0}'.format(train_num_batches)
-        print 'Testing batches: {0}'.format(test_num_batches)
+#       print 'Number of training sequences: {0}'.format(numTrainSeq)
+#       print 'Number of testing sequences: {0}'.format(numTestSeq)
+#       print 'Training batches: {0}'.format(train_num_batches)
+#       print 'Testing batches: {0}'.format(test_num_batches)
 
         # Train LSTM model
-        lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, class_count, numCalls, batchSize)
+        #lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, class_count, numCalls, batchSize)
         # Print accuracy histories over the folds
 #       print ''
 #       print hist.history
+        lstm = build_LSTM_model(folder, sample, trainFold, testFold, windowSize, class_count, numCalls, batchSize, maxNum)
+        #TODO - testing
+        return
 
         # Save trained model
         # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
@@ -249,6 +276,16 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls)
         #TODO - only do one fold for now
         break
 
+# Gets maximum number of subsequences of traces (after padding, assuming padding was done in preprocess.py)
+def getMax(fileMap,labelCount):
+    m = 0
+
+    for k,v in fileMap.iteritems():
+        if v > m:
+            m = v
+
+    return m
+
 def usage():
     print 'usage: python lstm.py features/ models/'
     sys.exit(2)
@@ -283,15 +320,15 @@ def _main():
     with open(metafn,'rb') as fr:
         # Window Size
         windowSize = pkl.load(fr)
-        # Number of samples per label
+        # Number of traces per label
         labelCount = pkl.load(fr)
-        # Number of samples per data file (so we can determine folds properly)
+        # Number of samples (i.e., subsequences) per trace file (so we can determine folds)
         fileMap = pkl.load(fr)
 
     print 'Window size: {0}'.format(windowSize)
 
-    print 'total samples: {0}'.format(sum(fileMap.values()))
-    print 'total samples: {0}'.format(sum(labelCount.values()))
+    print 'total samples (subsequences): {0}'.format(sum(fileMap.values()))
+    print 'total traces: {0}'.format(sum(labelCount.values()))
 
     # Print class labels and counts
     print 'Total Dataset:'
@@ -299,8 +336,11 @@ def _main():
         sys.stdout.write('Class: {0: <10} Count: {1: <10} ({2:.2f}% of dataset)\n'.format(k,v,100*float(v)/sum(labelCount.values())))
     print ''
 
+    # Retrieve maximum number of subsequences in a trace
+    maxNum = getMax(fileMap,labelCount)
+
     # Train LSTM
-    train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls)
+    train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, maxNum)
 
 if __name__ == '__main__':
     _main()
