@@ -89,6 +89,14 @@ $ python eval.py model.json weight.h5 train.pkl test.pkl > out.txt
 
 # train.pkl and test.pkl are saved train/test fold to be used to construct
 # confusion matrix and other statistics from running lstm.py
+
+
+
+# Get stats of similarity of sequences both inter- and intra-family
+$ python stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt
+
+# Compress/summarize sequences
+$ python compress.py /data/arsa/api-sequences compressed-sequences/
 ```
 
 ## Example

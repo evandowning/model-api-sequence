@@ -101,7 +101,7 @@ def extract_wrapper(args):
     return extract(*args)
 
 # Extracts samples & labels (i.e., malware family) from file
-def get_labels(fn):
+def get_labels(folder,fn):
     rv = dict()
 
     with open(fn,'r') as fr:
@@ -168,7 +168,7 @@ def _main():
     print 'Reading in samples to preprocess...'
 
     # Read samples to preprocess
-    samples = get_labels(samples_fn)
+    samples = get_labels(folder,samples_fn)
 
     # If this is a classification problem, then potentially filter out classes
     # with fewer samples
@@ -216,24 +216,32 @@ def _main():
     # Create argument pools
     args = [(folder,s,l,feature_folder,windowSize,task) for s,l in final_samples.iteritems()]
 
-    # Debugging
+    # NOTE: For debugging
 #   for folder,s,l,feature_folder,windowSize,task in args:
 #       print s
 #       extract(folder,s,l,feature_folder,windowSize,task)
 #   return
 
     # Extract features of samples
-    total = 0
-    longest = 0
-    shortest = -1
-    num = 0
-    extracted = 0
+    malTotal = 0
+    malLongest = 0
+    malShortest = -1
+    malNum = 0
+    malExtracted = 0
+    malClasses = set()
+
+    benTotal = 0
+    benLongest = 0
+    benShortest = -1
+    benNum = 0
+    benExtracted = 0
+
     pool = Pool(20)
     results = pool.imap_unordered(extract_wrapper, args)
     for e,r in enumerate(results):
         error,sample,numExtracted,lc,c = r
 
-        sys.stdout.write('Extracting sample\'s sequences: {0}/{1}\r'.format(e+1,len(final_samples.keys())))
+        sys.stdout.write('Extracting sample\'s traces: {0}/{1}\r'.format(e+1,len(final_samples.keys())))
         sys.stdout.flush()
 
         # If there was an error
@@ -245,21 +253,40 @@ def _main():
         # Keep track of number of extracted sequences for each sample
         fileMap[sample] = numExtracted
 
-        # Increment extracted counter
-        extracted += numExtracted
-
         # Keep count of number of samples per label
         labelCount = labelCount + lc
 
-        # Keep track of length of the entire sequence of this sample
-        if shortest == -1:
-            shortest = c
-        if c > longest:
-            longest = c
-        if c < shortest:
-            shortest = c
-        total += c
-        num += 1
+        # If this is a benign sample
+        if samples[sample] == 'benign':
+            # Increment extracted counter
+            benExtracted += numExtracted
+
+            # Keep track of length of the entire sequence of this sample
+            if benShortest == -1:
+                benShortest = c
+            if c > benLongest:
+                benLongest = c
+            if c < benShortest:
+                benShortest = c
+            benTotal += c
+            benNum += 1
+        # Else if this is a malicious sample
+        else:
+            # Keep track of number of families
+            malClasses.add(samples[sample])
+
+            # Increment extracted counter
+            malExtracted += numExtracted
+
+            # Keep track of length of the entire sequence of this sample
+            if malShortest == -1:
+                malShortest = c
+            if c > malLongest:
+                malLongest = c
+            if c < malShortest:
+                malShortest = c
+            malTotal += c
+            malNum += 1
 
     pool.close()
     pool.join()
@@ -267,12 +294,22 @@ def _main():
     sys.stdout.write('\n')
     sys.stdout.flush()
 
-    print 'Total number of sequences extracted: {0}'.format(extracted)
-    print 'Total number of PE samples extracted from: {0}'.format(len(fileMap.keys()))
+    print ''
+    print 'Benign: (not counting erroneous traces)'
+    print 'Total number of PE samples extracted from: {0}'.format(benNum)
+    print 'Total number of subsequences extracted: {0}'.format(benExtracted)
+    print 'Longest trace length: {0}'.format(benLongest)
+    print 'Shortest trace length which is > 0: {0}'.format(benShortest)
+    print 'Average trace length: {0:.2f}'.format(benTotal/float(benNum))
 
-    print 'Longest sequence length: {0}'.format(longest)
-    print 'Shortest sequence length which is > 0: {0}'.format(shortest)
-    print 'Average sequence length: {0:.2f}'.format(total/float(num))
+    print ''
+    print 'Malicious: (not counting erroneous traces)'
+    print 'Total number of PE samples extracted from: {0}'.format(malNum)
+    print 'Number of malware families: {0}'.format(len(malClasses))
+    print 'Total number of subsequences extracted: {0}'.format(malExtracted)
+    print 'Longest trace length: {0}'.format(malLongest)
+    print 'Shortest trace length which is > 0: {0}'.format(malShortest)
+    print 'Average trace length: {0:.2f}'.format(malTotal/float(malNum))
 
     # Metadata file for lstm.py
     metafn = os.path.join(feature_folder,'metadata.pkl')
@@ -281,7 +318,7 @@ def _main():
         pkl.dump(windowSize,fw)
         # Number of samples per label
         pkl.dump(labelCount,fw)
-        # Number of samples per data file (so we can determine folds properly)
+        # Number of subsequences per PE trace (so we can determine folds properly)
         pkl.dump(fileMap,fw)
 
 if __name__ == '__main__':
