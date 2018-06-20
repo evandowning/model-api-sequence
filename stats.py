@@ -65,7 +65,6 @@ def _main():
     stats = dict()
     history = dict()
 
-    #TODO
     # Iterate over samples and calculate their similarities
     for s1 in samples:
         c1 = samples[s1]
@@ -76,6 +75,7 @@ def _main():
             stats[c1] = dict()
             stats[c1]['jaccard'] = dict()
             stats[c1]['lsh'] = dict()
+            stats[c1]['hamming'] = dict()
 
         for s2 in samples:
             # Don't duplicate similarity measurements
@@ -90,22 +90,25 @@ def _main():
                 stats[c2] = dict()
                 stats[c2]['jaccard'] = dict()
                 stats[c2]['lsh'] = dict()
+                stats[c2]['hamming'] = dict()
             if c2 not in stats[c1]['jaccard']:
                 stats[c1]['jaccard'][c2] = list()
                 stats[c1]['lsh'][c2] = Counter()
+                stats[c1]['hamming'][c2] = list()
             if c1 not in stats[c2]['jaccard']:
                 stats[c2]['jaccard'][c1] = list()
                 stats[c2]['lsh'][c1] = Counter()
+                stats[c2]['hamming'][c1] = list()
 
             # Note that we've compared these samples now
             history[s1].add(s2)
 
             # Read API sequences
-            seq1 = readFile(folder,s1)
-            seq2 = readFile(folder,s2)
+            lseq1 = readFile(folder,s1)
+            lseq2 = readFile(folder,s2)
 
-            seq1 = set(seq1)
-            seq2 = set(seq2)
+            seq1 = set(lseq1)
+            seq2 = set(lseq2)
 
             # https://ekzhu.github.io/datasketch/lsh.html
             # Compare these two samples
@@ -128,24 +131,42 @@ def _main():
             # Calculate Jaccard similarity
             rj = float(len(seq1.intersection(seq2)))/float(len(seq1.union(seq2)))
 
+            # Pad smallest sequence
+            if len(lseq1) < len(lseq2):
+                diff = len(lseq2) - len(lseq1)
+                lseq1.extend([0]*diff)
+            elif len(lseq1) > len(lseq2):
+                diff = len(lseq1) - len(lseq2)
+                lseq2.extend([0]*diff)
+
+            # Calculate Hamming distance
+            rh = sum(s1 != s2 for s1,s2 in zip(lseq1,lseq2))
+
             # Keep track of similarities
             stats[c1]['jaccard'][c2].append(rj)
             stats[c1]['lsh'][c2][rl] += 1
+            stats[c1]['hamming'][c2].append(rh)
+
             stats[c2]['jaccard'][c1].append(rj)
             stats[c2]['lsh'][c1][rl] += 1
+            stats[c2]['hamming'][c1].append(rh)
 
             # Print status
-            print '{0} {4}  {1} {5}: Jaccard similarity: {2}  |  > 0.7 LSH similarity: {3}'.format(samples[s1],samples[s2],rj,rl,s1,s2)
+            print '{0} {4}  {1} {5}: Jaccard similarity: {2}  |  > 0.7 LSH similarity: {3} | Hamming distance: {6}'.format(samples[s1],samples[s2],rj,rl,s1,s2,rh)
 
-    #TODO
     # Print summary stats
     with open(outFn,'w') as fw:
         for c in stats:
             fw.write('{0}:\n'.format(c))
             for c2 in stats[c]['jaccard']:
+
                 add = float(sum(stats[c]['jaccard'][c2]))
                 total = float(len(stats[c]['jaccard'][c2]))
-                fw.write('    {0} {1} {2}\n'.format(c2, add/total, stats[c]['lsh'][c2]))
+
+                add2 = float(sum(stats[c]['hamming'][c2]))
+                total2 = float(len(stats[c]['hamming'][c2]))
+
+                fw.write('    {0} {1} {2} {3}\n'.format(c2, add/total, stats[c]['lsh'][c2], add2/total2))
 
 if __name__ == '__main__':
     _main()
