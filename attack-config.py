@@ -62,7 +62,7 @@ def _main():
                 fw.write('    # {0}\n'.format(v2))
                 fw.write('    {0},\n'.format(hex(int(k2))))
 
-            fw.write(')\n\n')
+            fw.write('              )\n\n')
 
 if __name__ == '__main__':
     _main()
