@@ -35,6 +35,7 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
 
     seq = seq.strip('\n')
     seq = seq.split('\n')
+    seq = [api.split(' ')[1] for api in seq]
     seq = np.array(seq)
 
     # Get original length (for stats)

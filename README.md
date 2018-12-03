@@ -126,3 +126,8 @@ $ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
                  /data/arsa/api-sequences-models/fold1-train.pkl \
                  /data/arsa/api-sequences-models/fold1-test.pkl > out-eval.txt
 ```
+
+## Create attack config for patchPE
+```
+$ python attack-config.py
+```
