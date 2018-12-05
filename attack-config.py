@@ -30,6 +30,9 @@ def _main():
     # Dictionary to hold calls to insert
     shells = dict()
 
+    # Don't insert multiple API calls after a unique PC
+    pc_set = set()
+
     # Determine what needs to be inserted where
     while True:
         try:
@@ -45,7 +48,10 @@ def _main():
                 if b not in shells:
                     shells[b] = dict()
 
-                shells[b][pc] = a
+                # Only add API call if it's never been added before this PC before
+                if pc not in pc_set:
+                    shells[b][pc] = a
+                    pc_set.add(pc)
 
                 b = seq_attack.next()
 
