@@ -8,6 +8,9 @@ This models api call sequences using LSTM
   * keras 2.1.2
   * sklearn 0.19.1
 
+## Install depedencies
+`$ sudo ./setup.sh`
+
 ## NOTES
 `preprocess.py` will delete the `features/` folder every time it is
 run. Make sure you back the folder up before running the script
