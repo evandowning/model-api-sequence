@@ -17,6 +17,9 @@ apt-get update
 # Install python2.7
 apt-get install -y python2.7
 
+# Install bson
+apt-get install -y python-bson
+
 # Install pip
 apt-get install -y python-pip
 
