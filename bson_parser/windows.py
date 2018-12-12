@@ -369,7 +369,7 @@ class BsonParser(ProtocolHandler):
                     parsed["pid"] = self.pid
                     parsed["api"] = apiname
                     parsed["category"] = category
-            parsed["eip"] = dec.get("PC", -1)
+                    parsed["eip"] = dec.get("PC", -1)
                     parsed["status"] = argdict.pop("is_success", 1)
                     parsed["return_value"] = argdict.pop("retval", 0)
                     parsed["arguments"] = argdict
