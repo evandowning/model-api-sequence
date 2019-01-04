@@ -249,7 +249,7 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
         break
 
 def usage():
-    print 'usage: python lstm.py features/ models/ save_model[true|false] save_data[true|false]'
+    print 'usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False]'
     sys.exit(2)
 
 def _main():
