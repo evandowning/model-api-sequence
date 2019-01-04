@@ -80,7 +80,7 @@ $ python preprocess.py api-sequences-folder/ malware.labels features/ windowSize
 # which will be used as a parameter to lstm.py
 
 # Train LSTM model
-$ python lstm.py features/ models/ > out.txt
+$ python lstm.py features/ models/ true true > out.txt
 
 # "models/" will be removed every time lstm.py is run. This folder stores all
 # of the models in JSON form to be imported and used by Keras in the future.
@@ -122,7 +122,7 @@ Shortest sequence length which is > 0: 1
 Average sequence length: 29437.39
 
 $ python lstm.py /data/arsa/api-sequences-features/ \
-                 /data/arsa/api-sequences-models/ > out-lstm.txt
+                 /data/arsa/api-sequences-models/ true true > out-lstm.txt
 
 $ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
                  /data/arsa/api-sequences-models/fold1-weight.hd5 \

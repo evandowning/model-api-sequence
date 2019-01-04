@@ -145,7 +145,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls):
+def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data):
     batchSize = 3000
 
     # Get folds for cross validation
@@ -187,78 +187,79 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls)
 
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, class_count, numCalls, batchSize)
-        # Print accuracy histories over the folds
-#       print ''
-#       print hist.history
 
         # Save trained model
-        # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
-        # Convert model to JSON format to be stored
-        modelJSON = lstm.to_json()
-        # Store model in model_folder
-        fn = os.path.join(model_folder,'fold{0}-model.json'.format(foldCount))
-        with open(fn,'w') as fw:
-            fw.write(modelJSON)
-        # Store weights for model
-        fn = os.path.join(model_folder,'fold{0}-weight.h5'.format(foldCount))
-        lstm.save_weights(fn)
+        if save_model:
+            # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
+            # Convert model to JSON format to be stored
+            modelJSON = lstm.to_json()
+            # Store model in model_folder
+            fn = os.path.join(model_folder,'fold{0}-model.json'.format(foldCount))
+            with open(fn,'w') as fw:
+                fw.write(modelJSON)
+            # Store weights for model
+            fn = os.path.join(model_folder,'fold{0}-weight.h5'.format(foldCount))
+            lstm.save_weights(fn)
 
         # Save train/test fold to be used by eval.py
-        fn = os.path.join(model_folder,'fold{0}-train.pkl'.format(foldCount))
-        with open(fn,'wb') as fw:
-            # Write the number of data we'll have in this file
-            pkl.dump(train_num_batches,fw)
+        if save_data:
+            fn = os.path.join(model_folder,'fold{0}-train.pkl'.format(foldCount))
+            with open(fn,'wb') as fw:
+                # Write the number of data we'll have in this file
+                pkl.dump(train_num_batches,fw)
 
-            # Loop through generator
-            i = 0
-            for g in trainData:
-                # If we've reached the end of the generator
-                if i == train_num_batches:
-                    break
+                # Loop through generator
+                i = 0
+                for g in trainData:
+                    # If we've reached the end of the generator
+                    if i == train_num_batches:
+                        break
 
-                # Write data to file
-                pkl.dump(g,fw)
-                i += 1
+                    # Write data to file
+                    pkl.dump(g,fw)
+                    i += 1
 
-                sys.stdout.write('Saving training fold data: {0}/{1}\r'.format(i,train_num_batches))
-                sys.stdout.flush()
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+                    sys.stdout.write('Saving training fold data: {0}/{1}\r'.format(i,train_num_batches))
+                    sys.stdout.flush()
+            sys.stdout.write('\n')
+            sys.stdout.flush()
 
-        fn = os.path.join(model_folder,'fold{0}-test.pkl'.format(foldCount))
-        with open(fn,'wb') as fw:
-            # Write the number of data we'll have in this file
-            pkl.dump(test_num_batches,fw)
+            fn = os.path.join(model_folder,'fold{0}-test.pkl'.format(foldCount))
+            with open(fn,'wb') as fw:
+                # Write the number of data we'll have in this file
+                pkl.dump(test_num_batches,fw)
 
-            # Loop through generator
-            i = 0
-            for g in testData:
-                # If we've reached the end of the generator
-                if i == test_num_batches:
-                    break
+                # Loop through generator
+                i = 0
+                for g in testData:
+                    # If we've reached the end of the generator
+                    if i == test_num_batches:
+                        break
 
-                # Write data to file
-                pkl.dump(g,fw)
-                i += 1
+                    # Write data to file
+                    pkl.dump(g,fw)
+                    i += 1
 
-                sys.stdout.write('Saving testing fold data: {0}/{1}\r'.format(i,test_num_batches))
-                sys.stdout.flush()
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+                    sys.stdout.write('Saving testing fold data: {0}/{1}\r'.format(i,test_num_batches))
+                    sys.stdout.flush()
+            sys.stdout.write('\n')
+            sys.stdout.flush()
 
         #TODO - only do one fold for now
         break
 
 def usage():
-    print 'usage: python lstm.py features/ models/'
+    print 'usage: python lstm.py features/ models/ save_model[true|false] save_data[true|false]'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 5:
         usage()
 
     feature_folder = sys.argv[1]
     model_folder = sys.argv[2]
+    save_model = eval(sys.argv[3])
+    save_data = eval(sys.argv[4])
 
     # Remove model folder if it already exists
     if os.path.exists(model_folder):
@@ -300,7 +301,7 @@ def _main():
     print ''
 
     # Train LSTM
-    train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls)
+    train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data)
 
 if __name__ == '__main__':
     _main()
