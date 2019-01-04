@@ -40,7 +40,7 @@ def extract_wrapper(args):
 
 # Gets raw files and their base directory names
 # NOTE: I assume there's been only one run of each sample
-def getFiles(folder):
+def getFiles(folder,hashes):
     # Get base directories
     dirs = os.listdir(folder)
 
@@ -49,6 +49,10 @@ def getFiles(folder):
 
     # Get raw files
     for d in dirs:
+        # Ignore hashes we don't care about
+        if d not in hashes:
+            continue
+
         for directory,dirname,files in os.walk(os.path.join(folder,d)):
             # Ignore directories
             base = os.path.basename(directory)
@@ -61,30 +65,32 @@ def getFiles(folder):
                     yield (d,directory,fn)
 
 def usage():
-    print 'usage: python extract-sequence.py /data/arsa/nvmtrace-cuckoo-data/output /data/arsa/output-sequences'
+    print 'usage: python extract-sequence.py /data/arsa/nvmtrace-cuckoo-data/output /data/arsa/api-sequences.labels /data/arsa/output-sequences'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         usage()
 
     rawDir = sys.argv[1]
-    outDir = sys.argv[2]
-    
+    hashFN = sys.argv[2]
+    outDir = sys.argv[3]
+
     # Create output directory if it doesn't already exist
     if not os.path.exists(outDir):
         os.mkdir(outDir)
 
+    # Get list of hashes to consider
+    hashes = list()
+    with open(hashFN,'r') as fr:
+        for line in fr:
+            hashes.append(line.split('\t')[0])
+
     # Get raw files and their corresponding directory
-    rv = getFiles(rawDir)
+    rv = getFiles(rawDir,hashes)
 
     # Construct args
     args = [(h,d,raw,outDir) for h,d,raw in rv]
-
-#   #TODO - debugging
-#   for h,d,raw,outDir in args:
-#       extract(h,d,raw,outDir)
-#   return
 
     # Extract each raw data file
     pool = Pool(20)
