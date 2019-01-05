@@ -37,11 +37,11 @@ def sequence_generator(fn,n):
     return xSet,ySet
 
 def usage():
-    print 'usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt'
+    print 'usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv'
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         usage()
 
     # Get parameters
@@ -50,6 +50,7 @@ def _main():
     feature_folder = sys.argv[3]
     sample_fn = sys.argv[4]
     label_fn = sys.argv[5]
+    prediction_fn = sys.argv[6]
 
     # Load model
     with open(model_json,'r') as fr:
@@ -97,41 +98,53 @@ def _main():
     predictClasses = np.array([])
     trueClasses = np.array([])
 
-    # For each sample
-    for k,v in fileMap.iteritems():
-        # Get real label
-        realLabel = labelMap[sampleMap[k]]
+    # Open predictions file
+    with open(prediction_fn,'w') as fw:
+        fw.write('Hash,Label,Prediction,Count\n')
 
-        sys.stdout.write('Sample: {0} | Label: {1} ({2}) | Subsequences: {3}'.format(k,sampleMap[k],realLabel,v))
-        sys.stdout.flush()
+        # For each sample
+        for k,v in fileMap.iteritems():
+            # If we don't care about this sample
+            if k not in sampleMap.keys():
+                continue
 
-        # Get subsequences
-        xdata,ydata = sequence_generator(os.path.join(feature_folder,k)+'.pkl',v)
+            # Get real label
+            realLabel = labelMap[sampleMap[k]]
 
-        # https://keras.io/models/model/#predict_on_batch
-        p = lstm.predict_on_batch(xdata)
+            sys.stdout.write('Sample: {0} | Label: {1} ({2}) | Subsequences: {3}'.format(k,sampleMap[k],realLabel,v))
+            sys.stdout.flush()
 
-        # Extract predicted classes for each sample in data
-        # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
-        predict = p.argmax(axis=-1)
+            # Get subsequences
+            xdata,ydata = sequence_generator(os.path.join(feature_folder,k)+'.pkl',v)
 
-        sys.stdout.write(' | Predicted classes: {0}\n'.format(Counter(predict).most_common()))
-        sys.stdout.flush()
+            # https://keras.io/models/model/#predict_on_batch
+            p = lstm.predict_on_batch(xdata)
 
-        if len(classes) == 0:
-            classes = set(ydata)
-        classes.update(ydata)
-        classes.update(predict)
+            # Extract predicted classes for each sample in data
+            # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
+            predict = p.argmax(axis=-1)
 
-        # Append data
-        if len(predictClasses) == 0:
-            predictClasses = np.array(predict)
-            trueClasses = np.array(ydata)
-        else:
-            predictClasses = np.append(predictClasses,predict)
-            trueClasses = np.append(trueClasses,ydata)
+            sys.stdout.write(' | Predicted classes: {0}\n'.format(Counter(predict).most_common()))
+            sys.stdout.flush()
 
-        break
+            # Write prediction to file
+            predictionCounter = Counter(predict)
+            for k2,v2 in predictionCounter.most_common():
+                # From: https://stackoverflow.com/questions/8023306/get-key-by-value-in-dictionary#13149770
+                fw.write('{0},{1},{2},{3}\n'.format(k,sampleMap[k],labelMap.keys()[labelMap.values().index(k2)],v2))
+
+            if len(classes) == 0:
+                classes = set(ydata)
+            classes.update(ydata)
+            classes.update(predict)
+
+            # Append data
+            if len(predictClasses) == 0:
+                predictClasses = np.array(predict)
+                trueClasses = np.array(ydata)
+            else:
+                predictClasses = np.append(predictClasses,predict)
+                trueClasses = np.append(trueClasses,ydata)
 
     # Print stats
     cf = confusion_matrix(trueClasses,predictClasses)
