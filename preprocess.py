@@ -134,9 +134,9 @@ def _main():
     global labelMap
 
     folder = sys.argv[1]
-    samples_fn = sys.argv[2]
-    api_fn = sys.argv[3]
-    label_fn = sys.argv[4]
+    api_fn = sys.argv[2]
+    label_fn = sys.argv[3]
+    samples_fn = sys.argv[4]
     feature_folder = sys.argv[5]
     windowSize = int(sys.argv[6])
     task = sys.argv[7]
