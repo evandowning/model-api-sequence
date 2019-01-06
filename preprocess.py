@@ -295,22 +295,24 @@ def _main():
     sys.stdout.write('\n')
     sys.stdout.flush()
 
-    print ''
-    print 'Benign: (not counting erroneous traces)'
-    print 'Total number of PE samples extracted from: {0}'.format(benNum)
-    print 'Total number of subsequences extracted: {0}'.format(benExtracted)
-    print 'Longest trace length: {0}'.format(benLongest)
-    print 'Shortest trace length which is > 0: {0}'.format(benShortest)
-    print 'Average trace length: {0:.2f}'.format(benTotal/float(benNum))
+    if benNum > 0:
+        print ''
+        print 'Benign: (not counting erroneous traces)'
+        print 'Total number of PE samples extracted from: {0}'.format(benNum)
+        print 'Total number of subsequences extracted: {0}'.format(benExtracted)
+        print 'Longest trace length: {0}'.format(benLongest)
+        print 'Shortest trace length which is > 0: {0}'.format(benShortest)
+        print 'Average trace length: {0:.2f}'.format(benTotal/float(benNum))
 
-    print ''
-    print 'Malicious: (not counting erroneous traces)'
-    print 'Total number of PE samples extracted from: {0}'.format(malNum)
-    print 'Number of malware families: {0}'.format(len(malClasses))
-    print 'Total number of subsequences extracted: {0}'.format(malExtracted)
-    print 'Longest trace length: {0}'.format(malLongest)
-    print 'Shortest trace length which is > 0: {0}'.format(malShortest)
-    print 'Average trace length: {0:.2f}'.format(malTotal/float(malNum))
+    if malNum > 0:
+        print ''
+        print 'Malicious: (not counting erroneous traces)'
+        print 'Total number of PE samples extracted from: {0}'.format(malNum)
+        print 'Number of malware families: {0}'.format(len(malClasses))
+        print 'Total number of subsequences extracted: {0}'.format(malExtracted)
+        print 'Longest trace length: {0}'.format(malLongest)
+        print 'Shortest trace length which is > 0: {0}'.format(malShortest)
+        print 'Average trace length: {0:.2f}'.format(malTotal/float(malNum))
 
     # Metadata file for lstm.py
     metafn = os.path.join(feature_folder,'metadata.pkl')
