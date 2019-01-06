@@ -62,7 +62,7 @@ If you want to add a new malware famliy, add it to "label.txt"
 ## Usage
 ```
 # Transform our sequences into data LSTM can work with
-$ python preprocess.py api-sequences-folder/ malware.labels features/ windowSize {classification | regression}
+$ python preprocess.py api-sequences-folder/ api.txt label.txt malware.labels features/ windowSize {classification | regression}
 
 # preprocess.py will use only the samples in malware.labels to extract the features
 # of. This is nice so we can be easily selective over which malware to extract :)
@@ -105,6 +105,8 @@ $ python compress.py /data/arsa/api-sequences compressed-sequences/
 ## Example
 ```
 $ python preprocess.py /data/arsa/api-sequences/ \
+                       api.txt \
+                       label.txt \
                        /data/arsa/api-sequences.labels \
                        /data/arsa/api-sequences-features/ \
                        32 \

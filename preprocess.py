@@ -119,7 +119,7 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    print 'usage: python preprocess.py api-sequence-folder/ hash.labels features-folder/ windowSize {classification | regression}'
+    print 'usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {classification | regression}'
     print ''
     print '    classification: classes are malware family label'
     print '    regression: classes are the next API call in the sequence immediately after the sliding window'
@@ -127,7 +127,7 @@ def usage():
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 8:
         usage()
 
     global apiMap
@@ -135,9 +135,11 @@ def _main():
 
     folder = sys.argv[1]
     samples_fn = sys.argv[2]
-    feature_folder = sys.argv[3]
-    windowSize = int(sys.argv[4])
-    task = sys.argv[5]
+    api_fn = sys.argv[3]
+    label_fn = sys.argv[4]
+    feature_folder = sys.argv[5]
+    windowSize = int(sys.argv[6])
+    task = sys.argv[7]
 
     # Test task parameter
     if (task != 'classification') and (task != 'regression'):
@@ -155,7 +157,7 @@ def _main():
 
     # Create a map between API calls and their integer representation
     apiMap = dict()
-    with open('api.txt','r') as fr:
+    with open(api_fn,'r') as fr:
         for e,line in enumerate(fr):
             line = line.strip('\n')
             # e+1 because we want 0 to be our padding integer
@@ -165,7 +167,7 @@ def _main():
 
     # Create a map between malware family label and their integer representation
     labelMap = dict()
-    with open('label.txt','r') as fr:
+    with open(label_fn,'r') as fr:
         for e,line in enumerate(fr):
             line = line.strip('\n')
             labelMap[line] = e
@@ -220,12 +222,6 @@ def _main():
 
     # Create argument pools
     args = [(folder,s,l,feature_folder,windowSize,task) for s,l in final_samples.iteritems()]
-
-    # NOTE: For debugging
-#   for folder,s,l,feature_folder,windowSize,task in args:
-#       print s
-#       extract(folder,s,l,feature_folder,windowSize,task)
-#   return
 
     # Extract features of samples
     malTotal = 0
