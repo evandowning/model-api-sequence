@@ -8,7 +8,6 @@ from struct import unpack
 from multiprocessing import Pool
 
 from hashlib import md5
-from zlib import adler32
 
 # Converts integers representing api calls to something in between [0,255]
 # Locality insensitive (good contrast)
@@ -16,16 +15,10 @@ from zlib import adler32
 def api_md5(api):
     return unpack('BBB', md5(api).digest()[:3])
 
-# Converts integers representing api calls to something in between [0,255]
-# Locality sensitive (things near each other will be similar colors)
-# 3 because 3 channels
-def api_adler32(api):
-    return unpack('BBB', pack('I', adler32(api))[-3:])
-
 # Extract API sequences and convert them to pixels
 def extract(folder,fn,num,width):
     label = None
-    seq = np.array([])
+    seq = list()
 
     # Read in sample's sequence
     path = os.path.join(folder,fn+'.pkl')
@@ -35,17 +28,16 @@ def extract(folder,fn,num,width):
             label = t[1]
 
             # Replace API call integers with pixel values
-            pixels = np.array([api_md5(api) for api in t[0]])
-
-            seq = np.append(seq,pixels)
+            seq.extend([api_md5(str(api)) for api in t[0]])
 
     # Pad array if it's not divisible by width (3 channels for RGB)
     r = len(seq) % (width*3)
     if r != 0:
-        seq = np.append(seq,[0]*(width*3-r))
+        seq.extend([api_md5('0')]*(width*3-r))
 
     # Reshape numpy array (3 channels)
     data = np.reshape(np.array(seq), (-1,width*3))
+    data = data.astype(np.int8)
 
     return fn,data,label
 
