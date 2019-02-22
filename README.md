@@ -7,6 +7,7 @@ This models api call sequences using LSTM
   * Python 2.7
   * keras 2.1.2
   * sklearn 0.19.1
+  * pypng 0.0.19
 
 ## Install depedencies
 `$ sudo ./setup.sh`
@@ -135,4 +136,9 @@ $ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
 ## Create attack config for patchPE
 ```
 $ python attack-config.py
+```
+
+## Create images of sequences
+```
+$ python color.py /data/arsa/api-sequences-features/
 ```
