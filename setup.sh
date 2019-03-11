@@ -12,16 +12,17 @@ fi
 set -e
 
 # Update
-apt-get update
+apt update
 
-# Install python2.7
-apt-get install -y python2.7
+# Install python3.5
+apt install -y python3.5
 
 # Install bson
-apt-get install -y python-bson
+apt install -y python3-bson
 
 # Install pip
-apt-get install -y python-pip
+apt install -y python3-pip
+pip3 install --upgrade pip
 
 # Install python libraries
-pip install -r requirements.txt
+pip3 install -r requirements.txt

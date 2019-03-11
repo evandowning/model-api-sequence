@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
+
 # This script creates an attack config file to be used by patchPE
 import sys
-from itertools import izip
+
 
 def read_seq(fn):
     with open(fn,'r') as fr:
@@ -9,7 +11,7 @@ def read_seq(fn):
             yield line
 
 def usage():
-    print 'python attack-config.py original-sequence attack-sequence config-output'
+    print('python attack-config.py original-sequence attack-sequence config-output')
     sys.exit(2)
 
 def _main():
@@ -25,7 +27,7 @@ def _main():
     seq_attack = read_seq(attack)
 
     pc,a = seq_original.next().split(' ')
-    b = seq_attack.next()
+    b = next(seq_attack)
 
     # Dictionary to hold calls to insert
     shells = dict()
@@ -39,7 +41,7 @@ def _main():
             # Find the next mismatch
             while (a == b):
                 pc,a = seq_original.next().split(' ')
-                b = seq_attack.next()
+                b = next(seq_attack)
 
             # Find the next match
             while (a != b):
@@ -53,18 +55,18 @@ def _main():
                     shells[b][pc] = a
                     pc_set.add(pc)
 
-                b = seq_attack.next()
+                b = next(seq_attack)
 
         except StopIteration as e:
             break
 
     # Create shellcode config file
     with open(output,'w') as fw:
-        for k,v in shells.iteritems():
+        for k,v in shells.items():
             fw.write('[shellcode_{0}]\n'.format(k))
             fw.write('target_addr = (\n')
 
-            for k2,v2 in v.iteritems():
+            for k2,v2 in v.items():
                 fw.write('    # {0}\n'.format(v2))
                 fw.write('    {0},\n'.format(hex(int(k2))))
 

@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+
 # Produces images of api sequences
 import sys
 import os
 import numpy as np
-import cPickle as pkl
+import pickle as pkl
 import png
 from struct import unpack
 from multiprocessing import Pool
@@ -45,7 +47,7 @@ def extract_wrapper(args):
     return extract(*args)
 
 def usage():
-    print 'usage: python color.py /data/arsa/api-sequences-features/ images/ image.labels errors.txt'
+    print('usage: python color.py /data/arsa/api-sequences-features/ images/ image.labels errors.txt')
     sys.exit(2)
 
 def _main():
@@ -80,7 +82,7 @@ def _main():
 
     #TODO - make these parameters
     # Create argument pools (limit it to sequences < 100000 and only 10k of them
-    args = [(feature_folder,fn,fileMap[fn],width) for fn in fileMap.keys() if fileMap[fn]*windowSize < 100000][:10000]
+    args = [(feature_folder,fn,fileMap[fn],width) for fn in list(fileMap.keys()) if fileMap[fn]*windowSize < 100000][:10000]
 
     # Extract images
     pool = Pool(20)

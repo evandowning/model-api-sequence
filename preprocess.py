@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+
 import sys
 import os
-import shutil
 from multiprocessing import Pool
-import cPickle as pkl
+import pickle as pkl
 import numpy as np
+import math
 
 from collections import Counter
 
@@ -54,7 +56,7 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
     # Replace API calls with their unique integer value
     # https://stackoverflow.com/questions/3403973/fast-replacement-of-values-in-a-numpy-array#3404089
     newseq = np.copy(seq)
-    for k,v in apiMap.iteritems():
+    for k,v in list(apiMap.items()):
         newseq[seq==k] = v
     seq = newseq
 
@@ -64,10 +66,10 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
         seq = np.append(seq,[0]*remainder)
 
     # Convert numpy array from array of strings to array of integers
-    seq = seq.astype('int64')
+    seq = seq.astype('int16')
 
     # Calculate window indices: https://stackoverflow.com/questions/15722324/sliding-window-in-numpy/42258242#42258242
-    index = np.arange(windowSize)[None,:] + windowSize*np.arange(len(seq)/windowSize)[:,None]
+    index = np.arange(windowSize)[None,:] + windowSize*np.arange(math.floor(len(seq)/windowSize))[:,None]
 
     # Count number of sequences extracted for this sample
     numExtracted = 0
@@ -119,11 +121,11 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    print 'usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {classification | regression}'
-    print ''
-    print '    classification: classes are malware family label'
-    print '    regression: classes are the next API call in the sequence immediately after the sliding window'
-    print ''
+    sys.stdout.write('usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {classification | regression}\n')
+    sys.stdout.write('\n')
+    sys.stdout.write('    classification: classes are malware family label\n')
+    sys.stdout.write('    regression: classes are the next API call in the sequence immediately after the sliding window\n')
+    sys.stdout.write('\n')
     sys.exit(2)
 
 def _main():
@@ -143,17 +145,17 @@ def _main():
 
     # Test task parameter
     if (task != 'classification') and (task != 'regression'):
-        print 'Error. "{0}" parameter is not "classification" or "regression"'.format(task)
+        sys.stdout.write(('Error. "{0}" parameter is not "classification" or "regression"\n'.format(task)))
         usage()
 
-    # Remove the feature folder if it already exists
+    # Error if feature folder already exists
     if os.path.exists(feature_folder):
-        shutil.rmtree(feature_folder)
-        os.mkdir(feature_folder)
-    else:
-        os.mkdir(feature_folder)
+        sys.stderr.write(('Error. Feature folder "{0}" already exists.\n'.format(feature_folder)))
+        sys.exit(1)
 
-    print 'Reading in api.txt file...'
+    os.mkdir(feature_folder)
+
+    sys.stdout.write('Reading in api.txt file...')
 
     # Create a map between API calls and their integer representation
     apiMap = dict()
@@ -163,7 +165,9 @@ def _main():
             # e+1 because we want 0 to be our padding integer
             apiMap[line] = e+1
 
-    print 'Reading in label.txt file...'
+    sys.stdout.write('Done\n')
+
+    sys.stdout.write('Reading in label.txt file...')
 
     # Create a map between malware family label and their integer representation
     labelMap = dict()
@@ -172,16 +176,20 @@ def _main():
             line = line.strip('\n')
             labelMap[line] = e
 
-    print 'Reading in samples to preprocess...'
+    sys.stdout.write('Done\n')
+
+    sys.stdout.write('Reading in samples to preprocess...')
 
     # Read samples to preprocess
     samples = get_labels(folder,samples_fn)
+
+    sys.stdout.write('Done\n')
 
     # If this is a classification problem, then potentially filter out classes
     # with fewer samples
     if task == 'classification':
         # Get counts of labels
-        counts = Counter(samples.values())
+        counts = Counter(list(samples.values()))
 
         #TODO - 10 is an arbitrary number. I.e., I don't want to train my LSTM
         #       on any singletons (labels with just one sample), so I chose to
@@ -198,16 +206,16 @@ def _main():
                 final_labels.add(l)
 
         # Remove samples with the labels we're not interested in (i.e., not in "final_labels")
-        final_samples = { k:v for k,v in samples.iteritems() if v in final_labels }
+        final_samples = { k:v for k,v in list(samples.items()) if v in final_labels }
 
         # Remove samples with labels we don't have in "label.txt"
-        final_samples = { k:v for k,v in samples.iteritems() if v in labelMap }
+        final_samples = { k:v for k,v in list(samples.items()) if v in labelMap }
 
     # If this is a regression problem, we don't need to do this
     elif task == 'regression':
         final_samples = samples
 
-    print 'Window Size: {0}'.format(windowSize)
+    sys.stdout.write(('Window Size: {0}\n'.format(windowSize)))
 
     # Remove error file
     errorfn = 'errors.txt'
@@ -221,7 +229,7 @@ def _main():
     labelCount = Counter()
 
     # Create argument pools
-    args = [(folder,s,l,feature_folder,windowSize,task) for s,l in final_samples.iteritems()]
+    args = [(folder,s,l,feature_folder,windowSize,task) for s,l in list(final_samples.items())]
 
     # Extract features of samples
     malTotal = 0
@@ -242,7 +250,7 @@ def _main():
     for e,r in enumerate(results):
         error,sample,numExtracted,lc,c = r
 
-        sys.stdout.write('Extracting sample\'s traces: {0}/{1}\r'.format(e+1,len(final_samples.keys())))
+        sys.stdout.write('Extracting sample\'s traces: {0}/{1}\r'.format(e+1,len(list(final_samples.keys()))))
         sys.stdout.flush()
 
         # If there was an error
@@ -293,26 +301,25 @@ def _main():
     pool.join()
 
     sys.stdout.write('\n')
-    sys.stdout.flush()
 
     if benNum > 0:
-        print ''
-        print 'Benign: (not counting erroneous traces)'
-        print 'Total number of PE samples extracted from: {0}'.format(benNum)
-        print 'Total number of subsequences extracted: {0}'.format(benExtracted)
-        print 'Longest trace length: {0}'.format(benLongest)
-        print 'Shortest trace length which is > 0: {0}'.format(benShortest)
-        print 'Average trace length: {0:.2f}'.format(benTotal/float(benNum))
+        sys.stdout.write('\n')
+        sys.stdout.write('Benign: (not counting erroneous traces)\n')
+        sys.stdout.write(('Total number of PE samples extracted from: {0}\n'.format(benNum)))
+        sys.stdout.write(('Total number of subsequences extracted: {0}\n'.format(benExtracted)))
+        sys.stdout.write(('Longest trace length: {0}\n'.format(benLongest)))
+        sys.stdout.write(('Shortest trace length which is > 0: {0}\n'.format(benShortest)))
+        sys.stdout.write(('Average trace length: {0:.2f}\n'.format(benTotal/float(benNum))))
 
     if malNum > 0:
-        print ''
-        print 'Malicious: (not counting erroneous traces)'
-        print 'Total number of PE samples extracted from: {0}'.format(malNum)
-        print 'Number of malware families: {0}'.format(len(malClasses))
-        print 'Total number of subsequences extracted: {0}'.format(malExtracted)
-        print 'Longest trace length: {0}'.format(malLongest)
-        print 'Shortest trace length which is > 0: {0}'.format(malShortest)
-        print 'Average trace length: {0:.2f}'.format(malTotal/float(malNum))
+        sys.stdout.write('\n')
+        sys.stdout.write('Malicious: (not counting erroneous traces)\n')
+        sys.stdout.write(('Total number of PE samples extracted from: {0}\n'.format(malNum)))
+        sys.stdout.write(('Number of malware families: {0}\n'.format(len(malClasses))))
+        sys.stdout.write(('Total number of subsequences extracted: {0}\n'.format(malExtracted)))
+        sys.stdout.write(('Longest trace length: {0}\n'.format(malLongest)))
+        sys.stdout.write(('Shortest trace length which is > 0: {0}\n'.format(malShortest)))
+        sys.stdout.write(('Average trace length: {0:.2f}\n'.format(malTotal/float(malNum))))
 
     # Metadata file for lstm.py
     metafn = os.path.join(feature_folder,'metadata.pkl')

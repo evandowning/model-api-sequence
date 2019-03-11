@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
+
 import sys
 import os
-import cPickle as pkl
+import pickle as pkl
 import numpy as np
 from collections import Counter
 
@@ -37,7 +39,7 @@ def sequence_generator(fn,n):
     return xSet,ySet
 
 def usage():
-    print 'usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv'
+    print('usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv')
     sys.exit(2)
 
 def _main():
@@ -87,10 +89,10 @@ def _main():
         # Number of samples per data file (so we can determine folds properly)
         fileMap = pkl.load(fr)
 
-    numSamples = len(fileMap.keys())
+    numSamples = len(list(fileMap.keys()))
 
-    print 'WindowSize: {0}'.format(windowSize)
-    print 'Number of samples: {0}'.format(numSamples)
+    print('WindowSize: {0}'.format(windowSize))
+    print('Number of samples: {0}'.format(numSamples))
 
     classes = set()
 
@@ -103,9 +105,9 @@ def _main():
         fw.write('Hash,Label,Prediction,Count\n')
 
         # For each sample
-        for k,v in fileMap.iteritems():
+        for k,v in fileMap.items():
             # If we don't care about this sample
-            if k not in sampleMap.keys():
+            if k not in list(sampleMap.keys()):
                 continue
 
             # Get real label
@@ -131,7 +133,7 @@ def _main():
             predictionCounter = Counter(predict)
             for k2,v2 in predictionCounter.most_common():
                 # From: https://stackoverflow.com/questions/8023306/get-key-by-value-in-dictionary#13149770
-                fw.write('{0},{1},{2},{3}\n'.format(k,sampleMap[k],labelMap.keys()[labelMap.values().index(k2)],v2))
+                fw.write('{0},{1},{2},{3}\n'.format(k,sampleMap[k],list(labelMap.keys())[list(labelMap.values()).index(k2)],v2))
 
             if len(classes) == 0:
                 classes = set(ydata)
@@ -165,11 +167,11 @@ def _main():
     FPR = FP/(FP+TN)
     ACC = (TP+TN)/(TP+TN+FP+FN)
 
-    print 'Classes: {0}'.format(sorted(classes))
+    print('Classes: {0}'.format(sorted(classes)))
 
-    print 'Stats for each class (class is index in these arrays)'
-    print 'TPR: {0}\n\nFPR: {1}\n\nFNR: {2}\n\nTNR: {3}\n\n'.format(list(TPR),list(FPR),list(FNR),list(TNR))
-    print 'ACC: {0}\n'.format(list(ACC))
+    print('Stats for each class (class is index in these arrays)')
+    print('TPR: {0}\n\nFPR: {1}\n\nFNR: {2}\n\nTNR: {3}\n\n'.format(list(TPR),list(FPR),list(FNR),list(TNR)))
+    print('ACC: {0}\n'.format(list(ACC)))
     return
 
     # https://stackoverflow.com/questions/46861966/how-to-find-loss-values-using-keras
@@ -181,8 +183,8 @@ def _main():
     p = predictClasses.reshape((1,len(predictClasses),1))[0]
     y_pred = K.variable(p)
 
-    print t,y_true
-    print p,y_pred
+    print(t,y_true)
+    print(p,y_pred)
 
     #TODO - fix this bug
     error = K.eval(losses.sparse_categorical_crossentropy(y_true, y_pred))
@@ -191,8 +193,8 @@ def _main():
     avgerror = sum(error) / float(len(error))
     avgacc = sum(acc) / float(len(acc))
 
-    print 'Average loss: {0}'.format(avgerror)
-    print 'Average accuracy: {0}'.format(avgacc)
+    print('Average loss: {0}'.format(avgerror))
+    print('Average accuracy: {0}'.format(avgacc))
 
 if __name__ == '__main__':
     _main()

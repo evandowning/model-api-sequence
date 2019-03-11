@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+
 import sys
 import os
-import shutil
-import cPickle as pkl
+import pickle as pkl
 import numpy as np
 import math
 from collections import Counter
@@ -15,7 +16,7 @@ from keras import optimizers
 from keras import callbacks as cb
 
 # Trains on per sample (i.e., file)
-def sequence_generator(folder, sample, foldIDs, batchSize):
+def sequence_generator(folder, sample, foldIDs, batchSize, binary):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
     while 1:
         xSet = np.array([])
@@ -37,6 +38,11 @@ def sequence_generator(folder, sample, foldIDs, batchSize):
                     t = pkl.load(fr)
                     x = t[0]
                     y = t[1]
+
+                    # If this should be binary classification, convert labels > 0 to 1
+                    if binary:
+                        if y > 0:
+                            y = 1
 
                     if len(xSet) == 0:
                         xSet = x
@@ -68,7 +74,6 @@ def sequence_generator(folder, sample, foldIDs, batchSize):
 
 # Builds LSTM model
 def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize, class_count, numCalls, batch_size):
-    # TODO - What is this?
     # Specify number of units
     # https://stackoverflow.com/questions/37901047/what-is-num-units-in-tensorflow-basiclstmcell#39440218
     num_units = 128
@@ -94,7 +99,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     # https://keras.io/layers/recurrent/#lstm
     model.add(LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
 
-    #TODO - If I want to add more layers
+    # NOTE:  If I want to add more layers
     # https://stackoverflow.com/questions/40331510/how-to-stack-multiple-lstm-in-keras
 
     # https://keras.io/layers/core/#dense
@@ -127,7 +132,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         # Data to train
         trainData,
         # Use multiprocessing because python Threading isn't really
-        # threading: https://docs.python.org/2/glossary.html#term-global-interpreter-lock
+        # threading: https://docs.python.org/3/glossary.html#term-global-interpreter-lock
         use_multiprocessing = True,
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
@@ -145,7 +150,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data):
+def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data, binary):
     batchSize = 3000
 
     # Get folds for cross validation
@@ -156,18 +161,18 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
     # We're folding on each file (which contains multiple sequences to train/test)
     # We do this for memory consumption reasons (i.e., it's hard to hold an array of 2 million lists within memory
     # to keep track of each fold)
-    numSamples = len(fileMap.keys())
-    sample = [(k,v) for k,v in fileMap.iteritems()]
+    numSamples = len(list(fileMap.keys()))
+    sample = [(k,v) for k,v in fileMap.items()]
 
     # Train and test LSTM over each fold
-    for trainFold, testFold in folds.split(range(numSamples)):
+    for trainFold, testFold in folds.split(list(range(numSamples))):
         foldCount += 1
-        print '==========================================================='
-        print 'Training Fold {0}/{1}'.format(foldCount,nFolds)
+        print('===========================================================')
+        print('Training Fold {0}/{1}'.format(foldCount,nFolds))
 
         # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, trainFold, batchSize)
-        testData = sequence_generator(folder, sample, testFold, batchSize)
+        trainData = sequence_generator(folder, sample, trainFold, batchSize, binary)
+        testData = sequence_generator(folder, sample, testFold, batchSize, binary)
 
         # Calculate number of batches
         numTrainSeq = 0
@@ -180,10 +185,10 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
         train_num_batches = math.ceil(float(numTrainSeq)/batchSize)
         test_num_batches = math.ceil(float(numTestSeq)/batchSize)
 
-        print 'Number of training sequences: {0}'.format(numTrainSeq)
-        print 'Number of testing sequences: {0}'.format(numTestSeq)
-        print 'Training batches: {0}'.format(train_num_batches)
-        print 'Testing batches: {0}'.format(test_num_batches)
+        print('Number of training sequences: {0}'.format(numTrainSeq))
+        print('Number of testing sequences: {0}'.format(numTestSeq))
+        print('Training batches: {0}'.format(train_num_batches))
+        print('Testing batches: {0}'.format(test_num_batches))
 
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, class_count, numCalls, batchSize)
@@ -249,24 +254,30 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
         break
 
 def usage():
-    print 'usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False]'
+    print('usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression}')
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         usage()
 
     feature_folder = sys.argv[1]
     model_folder = sys.argv[2]
     save_model = eval(sys.argv[3])
     save_data = eval(sys.argv[4])
+    task = sys.argv[5]
 
-    # Remove model folder if it already exists
+    # Test task parameter
+    if task not in ['binary_classification', 'multi_classification', 'regression']:
+        sys.stdout.write(('Error. "{0}" parameter is not "binary_classification" or "multi_classification" or "regression"\n'.format(task)))
+        usage()
+
+    # Error if model folder already exists
     if os.path.exists(model_folder):
-        shutil.rmtree(model_folder)
-        os.mkdir(model_folder)
-    else:
-        os.mkdir(model_folder)
+        sys.stderr.write(('Error. Model folder "{0}" already exists.\n'.format(model_folder)))
+        sys.exit(1)
+
+    os.mkdir(model_folder)
 
     windowSize = 0
     finalExtracted = 0
@@ -289,19 +300,25 @@ def _main():
         # Number of samples per data file (so we can determine folds properly)
         fileMap = pkl.load(fr)
 
-    print 'Window size: {0}'.format(windowSize)
+    print('Window size: {0}'.format(windowSize))
 
-    print 'total samples: {0}'.format(sum(fileMap.values()))
-    print 'total samples: {0}'.format(sum(labelCount.values()))
+    print('total samples: {0}'.format(sum(fileMap.values())))
+    print('total samples: {0}'.format(sum(labelCount.values())))
 
     # Print class labels and counts
-    print 'Total Dataset:'
+    print('Total Dataset:')
     for k,v in labelCount.most_common():
         sys.stdout.write('Class: {0: <10} Count: {1: <10} ({2:.2f}% of dataset)\n'.format(k,v,100*float(v)/sum(labelCount.values())))
-    print ''
+    print('')
 
     # Train LSTM
-    train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data)
+    if task == 'binary_classification':
+        train_lstm(feature_folder, fileMap, model_folder, 2, windowSize, numCalls, save_model, save_data, True)
+    elif task == 'multi_classification':
+        # "max+1" because the class values may not be consecutive. E.g., [1,17,42]
+        train_lstm(feature_folder, fileMap, model_folder, max(labelCount.keys())+1, windowSize, numCalls, save_model, save_data, False)
+    elif task == 'regression':
+        train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data, False)
 
 if __name__ == '__main__':
     _main()

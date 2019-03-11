@@ -3,21 +3,15 @@
 This models api call sequences using LSTM
 
 ## Requirements
-  * Debian 8 (Jessie)
-  * Python 2.7
-  * keras 2.1.2
-  * sklearn 0.19.1
-  * pypng 0.0.19
+  * Debian 9 64-bit
 
 ## Install depedencies
-`$ sudo ./setup.sh`
+```
+$ sudo ./setup.sh
+```
 
 ## NOTES
-`preprocess.py` will delete the `features/` folder every time it is
-run. Make sure you back the folder up before running the script
-if you wish to keep your previously extracted features.
-
-`preprocess.py` will also write to a file called `errors.txt` which lists the samples
+`preprocess.py` will write to a file called `errors.txt` which lists the samples
 which had no sequences within them or had errors whilst processing the samples.
 These samples will not be transfered to the `features/` folder.
 
@@ -63,10 +57,10 @@ If you want to add a new malware famliy, add it to "label.txt"
 ## Usage
 ```
 # Transform our sequences into data LSTM can work with
-$ python preprocess.py api-sequences-folder/ api.txt label.txt malware.labels features/ windowSize {classification | regression}
+$ python3 preprocess.py api-sequences-folder/ api.txt label.txt malware.labels features/ windowSize {classification | regression}
 
 # preprocess.py will use only the samples in malware.labels to extract the features
-# of. This is nice so we can be easily selective over which malware to extract :)
+# of.
 
 # At this point we have a folder "features/" which contains a file "labels" which lists
 # all of the sample file names within the folder "features/" and their corresponding labels
@@ -81,15 +75,15 @@ $ python preprocess.py api-sequences-folder/ api.txt label.txt malware.labels fe
 # which will be used as a parameter to lstm.py
 
 # Train LSTM model
-$ python lstm.py features/ models/ true true > out.txt
+$ python3 lstm.py features/ models/ true true > out.txt
 
-# "models/" will be removed every time lstm.py is run. This folder stores all
-# of the models in JSON form to be imported and used by Keras in the future.
+# "models/" stores all of the models in JSON form to be imported and used by
+# Keras in the future.
 
 # "out.txt" will store the detailed output of training and testing your LSTM
 
 # Evaluate LSTM model
-$ python eval.py model.json weight.h5 train.pkl test.pkl > out.txt
+$ python3 evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv
 
 # train.pkl and test.pkl are saved train/test fold to be used to construct
 # confusion matrix and other statistics from running lstm.py
@@ -97,15 +91,12 @@ $ python eval.py model.json weight.h5 train.pkl test.pkl > out.txt
 
 
 # Get stats of similarity of sequences both inter- and intra-family
-$ python stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt
-
-# Compress/summarize sequences
-$ python compress.py /data/arsa/api-sequences compressed-sequences/
+$ python3 sim_stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt
 ```
 
 ## Example
 ```
-$ python preprocess.py /data/arsa/api-sequences/ \
+$ python3 preprocess.py /data/arsa/api-sequences/ \
                        api.txt \
                        label.txt \
                        /data/arsa/api-sequences.labels \
@@ -124,10 +115,10 @@ Longest sequence length: 4182014
 Shortest sequence length which is > 0: 1
 Average sequence length: 29437.39
 
-$ python lstm.py /data/arsa/api-sequences-features/ \
+$ python3 lstm.py /data/arsa/api-sequences-features/ \
                  /data/arsa/api-sequences-models/ true true > out-lstm.txt
 
-$ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
+$ python3 eval.py /data/arsa/api-sequences-models/fold1-model.json \
                  /data/arsa/api-sequences-models/fold1-weight.hd5 \
                  /data/arsa/api-sequences-models/fold1-train.pkl \
                  /data/arsa/api-sequences-models/fold1-test.pkl > out-eval.txt
@@ -135,10 +126,10 @@ $ python eval.py /data/arsa/api-sequences-models/fold1-model.json \
 
 ## Create attack config for patchPE
 ```
-$ python attack-config.py
+$ python3 attack-config.py
 ```
 
 ## Create images of sequences
 ```
-$ python color.py /data/arsa/api-sequences-features/
+$ python3 color.py /data/arsa/api-sequences-features/
 ```
