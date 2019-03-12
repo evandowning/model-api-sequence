@@ -3,7 +3,6 @@
 # This script creates an attack config file to be used by patchPE
 import sys
 
-
 def read_seq(fn):
     with open(fn,'r') as fr:
         for line in fr:

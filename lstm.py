@@ -16,7 +16,7 @@ from keras import optimizers
 from keras import callbacks as cb
 
 # Trains on per sample (i.e., file)
-def sequence_generator(folder, sample, foldIDs, batchSize, binary):
+def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
     while 1:
         xSet = np.array([])
@@ -40,9 +40,11 @@ def sequence_generator(folder, sample, foldIDs, batchSize, binary):
                     y = t[1]
 
                     # If this should be binary classification, convert labels > 0 to 1
-                    if binary:
+                    if task == 'binary_classification':
                         if y > 0:
                             y = 1
+                    elif task == 'multi_classification':
+                        y = convert.index(y)
 
                     if len(xSet) == 0:
                         xSet = x
@@ -150,7 +152,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     return model, hist
 
 # Trains and tests LSTM over samples
-def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data, binary):
+def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data, task, convert):
     batchSize = 3000
 
     # Get folds for cross validation
@@ -171,8 +173,8 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
         print('Training Fold {0}/{1}'.format(foldCount,nFolds))
 
         # Put features into format LSTM can ingest
-        trainData = sequence_generator(folder, sample, trainFold, batchSize, binary)
-        testData = sequence_generator(folder, sample, testFold, batchSize, binary)
+        trainData = sequence_generator(folder, sample, trainFold, batchSize, task, convert)
+        testData = sequence_generator(folder, sample, testFold, batchSize, task, convert)
 
         # Calculate number of batches
         numTrainSeq = 0
@@ -250,15 +252,14 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
             sys.stdout.write('\n')
             sys.stdout.flush()
 
-        #TODO - only do one fold for now
-        break
-
 def usage():
-    print('usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression}')
+    print('usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} out_class.txt')
+    print('')
+    print('\tout_class.txt: file which stores trained class values in case they change from the original stored')
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         usage()
 
     feature_folder = sys.argv[1]
@@ -266,6 +267,7 @@ def _main():
     save_model = eval(sys.argv[3])
     save_data = eval(sys.argv[4])
     task = sys.argv[5]
+    convert_fn = sys.argv[6]
 
     # Test task parameter
     if task not in ['binary_classification', 'multi_classification', 'regression']:
@@ -311,14 +313,30 @@ def _main():
         sys.stdout.write('Class: {0: <10} Count: {1: <10} ({2:.2f}% of dataset)\n'.format(k,v,100*float(v)/sum(labelCount.values())))
     print('')
 
+    # Store class conversion
+    if task == 'binary_classification':
+        convert = [k for k,v in labelCount.most_common()]
+        with open(convert_fn,'w') as fw:
+            # NOTE: format: Trained Actual
+            for i in convert:
+                if i > 0:
+                    fw.write('{0} {1}\n'.format(1,i))
+                else:
+                    fw.write('{0} {1}\n'.format(0,i))
+    elif task == 'multi_classification':
+        convert = sorted([k for k,v in labelCount.most_common()])
+        with open(convert_fn,'w') as fw:
+            fw.write('Trained Actual\n')
+            for i in range(len(convert)):
+                fw.write('{0} {1}\n'.format(i,convert[i]))
+
     # Train LSTM
     if task == 'binary_classification':
-        train_lstm(feature_folder, fileMap, model_folder, 2, windowSize, numCalls, save_model, save_data, True)
+        train_lstm(feature_folder, fileMap, model_folder, 2, windowSize, numCalls, save_model, save_data, task, [])
     elif task == 'multi_classification':
-        # "max+1" because the class values may not be consecutive. E.g., [1,17,42]
-        train_lstm(feature_folder, fileMap, model_folder, max(labelCount.keys())+1, windowSize, numCalls, save_model, save_data, False)
+        train_lstm(feature_folder, fileMap, model_folder, len(labelCount.keys())+1, windowSize, numCalls, save_model, save_data, task, convert)
     elif task == 'regression':
-        train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data, False)
+        train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data, task, [])
 
 if __name__ == '__main__':
     _main()

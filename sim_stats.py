@@ -41,7 +41,7 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    print('usage: python sim_stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt')
+    print('usage: python sim_stats.py api-sequences/ hash.label numSamplesPerClass outfile.txt')
     sys.exit(2)
 
 def _main():
@@ -59,7 +59,7 @@ def _main():
     # Randomly choose samples from labels with at least 10 samples in them
     samples = dict()
     for c in labels:
-        if len(labels[c]) < 5000:
+        if len(labels[c]) < k:
             continue
         for s in random.sample(labels[c],k):
             samples[s] = c
@@ -158,6 +158,10 @@ def _main():
 
     # Print summary stats
     with open(outFn,'w') as fw:
+        fw.write('class:\n')
+        fw.write('    class jaccard_average LSH_ similar_counts hamming_average\n')
+        fw.write('\n')
+
         for c in stats:
             fw.write('{0}:\n'.format(c))
             for c2 in stats[c]['jaccard']:

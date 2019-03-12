@@ -75,7 +75,7 @@ $ python3 preprocess.py api-sequences-folder/ api.txt label.txt malware.labels f
 # which will be used as a parameter to lstm.py
 
 # Train LSTM model
-$ python3 lstm.py features/ models/ true true > out.txt
+$ python3 lstm.py features/ models/ True True multi_classification convert_classes.txt > out.txt
 
 # "models/" stores all of the models in JSON form to be imported and used by
 # Keras in the future.
@@ -83,7 +83,7 @@ $ python3 lstm.py features/ models/ true true > out.txt
 # "out.txt" will store the detailed output of training and testing your LSTM
 
 # Evaluate LSTM model
-$ python3 evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv
+$ python3 evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv convert_classes.txt
 
 # train.pkl and test.pkl are saved train/test fold to be used to construct
 # confusion matrix and other statistics from running lstm.py
