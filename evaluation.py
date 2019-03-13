@@ -39,11 +39,11 @@ def sequence_generator(fn,n):
     return xSet,ySet
 
 def usage():
-    print('usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv')
+    print('usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv [convert_classes.txt]')
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 7:
+    if (len(sys.argv) != 7) and (len(sys.argv) != 8):
         usage()
 
     # Get parameters
@@ -53,6 +53,15 @@ def _main():
     sample_fn = sys.argv[4]
     label_fn = sys.argv[5]
     prediction_fn = sys.argv[6]
+
+    convert = dict()
+    if len(sys.argv) == 8:
+        convert_fn = sys.argv[7]
+        with open(convert_fn,'r') as fr:
+            for line in fr:
+                line = line.strip('\n')
+                k,v = line.split()
+                convert[int(k)] = int(v)
 
     # Load model
     with open(model_json,'r') as fr:
@@ -119,12 +128,27 @@ def _main():
             # Get subsequences
             xdata,ydata = sequence_generator(os.path.join(feature_folder,k)+'.pkl',v)
 
+            # If no sequences
+            if len(xdata) == 0:
+                sys.stdout.write(' | ERROR, sequence length 0\n')
+                continue
+
+            # If it's just one sequence, restructure array
+            if xdata.shape == (32,):
+                xdata = xdata.reshape((1,32))
+                ydata = np.array([ydata])
+
             # https://keras.io/models/model/#predict_on_batch
             p = lstm.predict_on_batch(xdata)
 
             # Extract predicted classes for each sample in data
             # https://stackoverflow.com/questions/38971293/get-class-labels-from-keras-functional-model
             predict = p.argmax(axis=-1)
+
+            # Replace labels
+            tmp = np.copy(predict)
+            for k3,v3 in convert.items(): tmp[predict==k3] = v3
+            predict = np.copy(tmp)
 
             sys.stdout.write(' | Predicted classes: {0}\n'.format(Counter(predict).most_common()))
             sys.stdout.flush()

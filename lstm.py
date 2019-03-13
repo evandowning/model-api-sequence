@@ -253,21 +253,22 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
             sys.stdout.flush()
 
 def usage():
-    print('usage: python lstm.py features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} out_class.txt')
+    print('usage: python lstm.py cuckoo-headless/extract_raw/api.txt features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} convert_class.txt')
     print('')
     print('\tout_class.txt: file which stores trained class values in case they change from the original stored')
     sys.exit(2)
 
 def _main():
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         usage()
 
-    feature_folder = sys.argv[1]
-    model_folder = sys.argv[2]
-    save_model = eval(sys.argv[3])
-    save_data = eval(sys.argv[4])
-    task = sys.argv[5]
-    convert_fn = sys.argv[6]
+    api_fn = sys.argv[1]
+    feature_folder = sys.argv[2]
+    model_folder = sys.argv[3]
+    save_model = eval(sys.argv[4])
+    save_data = eval(sys.argv[5])
+    task = sys.argv[6]
+    convert_fn = sys.argv[7]
 
     # Test task parameter
     if task not in ['binary_classification', 'multi_classification', 'regression']:
@@ -287,7 +288,7 @@ def _main():
     fileMap = dict()
 
     # Count number of unique api calls
-    with open('api.txt','r') as fr:
+    with open(api_fn,'r') as fr:
         apis = fr.read()
     apis = apis.split('\n')
     numCalls = len(apis)
@@ -326,7 +327,7 @@ def _main():
     elif task == 'multi_classification':
         convert = sorted([k for k,v in labelCount.most_common()])
         with open(convert_fn,'w') as fw:
-            fw.write('Trained Actual\n')
+            # NOTE: format: Trained Actual
             for i in range(len(convert)):
                 fw.write('{0} {1}\n'.format(i,convert[i]))
 
