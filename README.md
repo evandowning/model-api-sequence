@@ -15,6 +15,41 @@ $ git clone --recurse-submodules git@github.com:evandowning/model-api-sequence.g
 $ sudo ./setup.sh
 ```
 
+## Usage
+```
+# Extract sequences from nvmtrace dumps (https://github.com/evandowning/nvmtrace/tree/kvm)
+$ cd cuckoo-headless/extract_raw
+$ python2.7 extract-existence.py
+
+# Parse sequences into pickle files
+$ python3 preprocess.py api-sequences/ cuckoo-headless/extract_raw/api.txt \
+          label.txt malware_label.txt features/ windowSize {classification | regression}
+
+# Model data over 10-fold cross-validation & save models to file
+$ python3 lstm.py features/ models/ save_model[True|False] save_data[True|False] \
+          {binary_classification | multi_classification | regression} \
+          convert_classes.txt
+
+# Evaluate model
+$ python3 evaluation.py models/model.json models/weight.h5 features/ \
+          malware_label.txt labels.txt predictions.csv convert_classes.txt
+```
+
+## Measure similarity of sequences (both inter- and intra-family)
+```
+$ python3 sim_stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt
+```
+
+## Create attack config for patchPE
+```
+$ python3 attack-config.py
+```
+
+## Create PNG images of sequences
+```
+$ python3 color.py /data/arsa/api-sequences-features/
+```
+
 ## NOTES
 `preprocess.py` will write to a file called `errors.txt` which lists the samples
 which had no sequences within them or had errors whilst processing the samples.
@@ -54,34 +89,3 @@ accordingly.
 
 If you want to add a new API call to keep track of, add it to "api.txt"
 If you want to add a new malware family, add it to "label.txt"
-
-## Usage
-```
-# Parse sequences into pickle files
-$ python3 preprocess.py api-sequences/ api.txt label.txt malware_label.txt \
-          features/ windowSize {classification | regression}
-
-# Model data over 10-fold cross-validation & save models to file
-$ python3 lstm.py features/ models/ save_model[True|False] save_data[True|False] \
-          {binary_classification | multi_classification | regression} \
-          convert_classes.txt
-
-# Evaluate model
-$ python3 evaluation.py models/model.json models/weight.h5 features/ \
-          malware_label.txt labels.txt predictions.csv convert_classes.txt
-```
-
-## Measure similarity of sequences (both inter- and intra-family)
-```
-$ python3 sim_stats.py /data/arsa/api-sequences /data/arsa/api-sequences.labels numSamplesPerClass outfile.txt
-```
-
-## Create attack config for patchPE
-```
-$ python3 attack-config.py
-```
-
-## Create PNG images of sequences
-```
-$ python3 color.py /data/arsa/api-sequences-features/
-```

@@ -47,7 +47,7 @@ def extract_wrapper(args):
     return extract(*args)
 
 def usage():
-    print('usage: python color.py /data/arsa/api-sequences-features/ images/ image.labels errors.txt')
+    print('usage: python3 color.py api-sequences-features/ images/ image.labels errors.txt')
     sys.exit(2)
 
 def _main():
