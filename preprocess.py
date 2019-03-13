@@ -187,7 +187,7 @@ def _main():
 
     # If this is a classification problem, then potentially filter out classes
     # with fewer samples
-    if (task == 'binary_classification') or (task = 'multi_classification'):
+    if (task == 'binary_classification') or (task == 'multi_classification'):
         # Get counts of labels
         counts = Counter(list(samples.values()))
 
