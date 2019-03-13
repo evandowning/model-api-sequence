@@ -28,7 +28,7 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
 
     # If path doesn't exist, return
     if not os.path.exists(path):
-        return 'Path doesn\'t exist.',None,None,None,None
+        return 'Path "{0}" doesn\'t exist\n'.format(path),None,None,None,None
 
     # Read in entire file
     with open(path,'r') as fr:
