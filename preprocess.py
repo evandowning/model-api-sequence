@@ -78,7 +78,7 @@ def extract(folder,sample,label,feature_folder,windowSize,task):
     newpath = os.path.join(feature_folder,sample+'.pkl')
 
     # If this is classification, we have to map the label to its integer representation
-    if task == 'classification':
+    if (task == 'binary_classification') or (task == 'multi_classification'):
         label = labelMap[label]
 
     with open(newpath,'wb') as fw:
@@ -121,7 +121,7 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    sys.stdout.write('usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {classification | regression}\n')
+    sys.stdout.write('usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {binary_classification | multi_classification | regression}\n')
     sys.stdout.write('\n')
     sys.stdout.write('    classification: classes are malware family label\n')
     sys.stdout.write('    regression: classes are the next API call in the sequence immediately after the sliding window\n')
@@ -144,8 +144,8 @@ def _main():
     task = sys.argv[7]
 
     # Test task parameter
-    if (task != 'classification') and (task != 'regression'):
-        sys.stdout.write(('Error. "{0}" parameter is not "classification" or "regression"\n'.format(task)))
+    if task not in ['binary_classification', 'multi_classification', 'regression']:
+        sys.stdout.write(('Error. "{0}" parameter is not "binary_classification" or "multi_classification" or "regression"\n'.format(task)))
         usage()
 
     # Error if feature folder already exists
@@ -187,7 +187,7 @@ def _main():
 
     # If this is a classification problem, then potentially filter out classes
     # with fewer samples
-    if task == 'classification':
+    if (task == 'binary_classification') or (task = 'multi_classification'):
         # Get counts of labels
         counts = Counter(list(samples.values()))
 

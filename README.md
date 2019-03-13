@@ -23,7 +23,7 @@ $ python2.7 extract-existence.py
 
 # Parse sequences into pickle files
 $ python3 preprocess.py api-sequences/ cuckoo-headless/extract_raw/api.txt \
-          label.txt malware_label.txt features/ windowSize {classification | regression}
+          label.txt malware_label.txt features/ windowSize {binary_classification | multi_classification | regression}
 
 # Model data over 10-fold cross-validation & save models to file
 $ python3 lstm.py features/ models/ save_model[True|False] save_data[True|False] \
