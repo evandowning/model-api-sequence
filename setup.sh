@@ -14,11 +14,12 @@ set -e
 # Update
 apt update
 
-# Requirements for parsing raw files
-apt install -y python2.7
-apt install -y python-bson
-
 # Requirements for modeling
 apt install -y python3.5
 apt install -y python3-pip
 pip3 install -r requirements.txt
+
+# Requirements for parsing
+cd cuckoo-headless/
+bash setup.sh
+cd ../
