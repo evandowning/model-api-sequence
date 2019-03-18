@@ -47,7 +47,7 @@ def extract_wrapper(args):
     return extract(*args)
 
 def usage():
-    print('usage: python3 color.py api-sequences-features/ images/ image.labels errors.txt')
+    sys.stderr.write('usage: python3 color.py api-sequences-features/ images/ image.labels errors.txt\n')
     sys.exit(2)
 
 def _main():

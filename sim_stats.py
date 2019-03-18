@@ -41,7 +41,7 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    print('usage: python sim_stats.py api-sequences/ hash.label numSamplesPerClass outfile.txt')
+    sys.stderr.write('usage: python sim_stats.py api-sequences/ hash.label numSamplesPerClass outfile.txt\n')
     sys.exit(2)
 
 def _main():
@@ -154,7 +154,7 @@ def _main():
             stats[c2]['hamming'][c1].append(rh)
 
             # Print status
-            print('{0} {4}  {1} {5}: Jaccard similarity: {2}  |  > 0.7 LSH similarity: {3} | Hamming distance: {6}'.format(samples[s1],samples[s2],rj,rl,s1,s2,rh))
+            sys.stdout.write('{0} {4}  {1} {5}: Jaccard similarity: {2}  |  > 0.7 LSH similarity: {3} | Hamming distance: {6}\n'.format(samples[s1],samples[s2],rj,rl,s1,s2,rh))
 
     # Print summary stats
     with open(outFn,'w') as fw:

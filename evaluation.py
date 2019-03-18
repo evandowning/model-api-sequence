@@ -39,7 +39,7 @@ def sequence_generator(fn,n):
     return xSet,ySet
 
 def usage():
-    print('usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv [convert_classes.txt]')
+    sys.stderr.write('usage: python evaluation.py model.json weight.h5 features/ hash.label labels.txt predictions.csv [convert_classes.txt]\n')
     sys.exit(2)
 
 def _main():
@@ -100,8 +100,8 @@ def _main():
 
     numSamples = len(list(fileMap.keys()))
 
-    print('WindowSize: {0}'.format(windowSize))
-    print('Number of samples: {0}'.format(numSamples))
+    sys.stdout.write('WindowSize: {0}\n'.format(windowSize))
+    sys.stdout.write('Number of samples: {0}\n'.format(numSamples))
 
     classes = set()
 
@@ -191,11 +191,11 @@ def _main():
     FPR = FP/(FP+TN)
     ACC = (TP+TN)/(TP+TN+FP+FN)
 
-    print('Classes: {0}'.format(sorted(classes)))
+    sys.stdout.write('Classes: {0}\n'.format(sorted(classes)))
 
-    print('Stats for each class (class is index in these arrays)')
-    print('TPR: {0}\n\nFPR: {1}\n\nFNR: {2}\n\nTNR: {3}\n\n'.format(list(TPR),list(FPR),list(FNR),list(TNR)))
-    print('ACC: {0}\n'.format(list(ACC)))
+    sys.stdout.write('Stats for each class (class is index in these arrays)\n')
+    sys.stdout.write('TPR: {0}\n\nFPR: {1}\n\nFNR: {2}\n\nTNR: {3}\n\n\n'.format(list(TPR),list(FPR),list(FNR),list(TNR)))
+    sys.stdout.write('ACC: {0}\n\n'.format(list(ACC)))
     return
 
     # https://stackoverflow.com/questions/46861966/how-to-find-loss-values-using-keras

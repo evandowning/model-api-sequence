@@ -169,8 +169,8 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
     # Train and test LSTM over each fold
     for trainFold, testFold in folds.split(list(range(numSamples))):
         foldCount += 1
-        print('===========================================================')
-        print('Training Fold {0}/{1}'.format(foldCount,nFolds))
+        sys.stdout.write('===========================================================\n')
+        sys.stdout.write('Training Fold {0}/{1}\n'.format(foldCount,nFolds))
 
         # Put features into format LSTM can ingest
         trainData = sequence_generator(folder, sample, trainFold, batchSize, task, convert)
@@ -187,10 +187,10 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
         train_num_batches = math.ceil(float(numTrainSeq)/batchSize)
         test_num_batches = math.ceil(float(numTestSeq)/batchSize)
 
-        print('Number of training sequences: {0}'.format(numTrainSeq))
-        print('Number of testing sequences: {0}'.format(numTestSeq))
-        print('Training batches: {0}'.format(train_num_batches))
-        print('Testing batches: {0}'.format(test_num_batches))
+        sys.stdout.write('Number of training sequences: {0}\n'.format(numTrainSeq))
+        sys.stdout.write('Number of testing sequences: {0}\n'.format(numTestSeq))
+        sys.stdout.write('Training batches: {0}\n'.format(train_num_batches))
+        sys.stdout.write('Testing batches: {0}\n'.format(test_num_batches))
 
         # Train LSTM model
         lstm,hist = build_LSTM_model(trainData, train_num_batches, testData, test_num_batches, windowSize, class_count, numCalls, batchSize)
@@ -253,9 +253,8 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
             sys.stdout.flush()
 
 def usage():
-    print('usage: python lstm.py cuckoo-headless/extract_raw/api.txt features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} convert_class.txt')
-    print('')
-    print('\tout_class.txt: file which stores trained class values in case they change from the original stored')
+    sys.stderr.write('usage: python lstm.py cuckoo-headless/extract_raw/api.txt features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} convert_class.txt\n\n')
+    sys.stderr.write('\tout_class.txt: file which stores trained class values in case they change from the original stored\n')
     sys.exit(2)
 
 def _main():
@@ -303,16 +302,16 @@ def _main():
         # Number of samples per data file (so we can determine folds properly)
         fileMap = pkl.load(fr)
 
-    print('Window size: {0}'.format(windowSize))
+    sys.stdout.write('Window size: {0}\n'.format(windowSize))
 
-    print('total samples: {0}'.format(sum(fileMap.values())))
-    print('total samples: {0}'.format(sum(labelCount.values())))
+    sys.stdout.write('total samples: {0}\n'.format(sum(fileMap.values())))
+    sys.stdout.write('total samples: {0}\n'.format(sum(labelCount.values())))
 
     # Print class labels and counts
-    print('Total Dataset:')
+    sys.stdout.write('Total Dataset:\n')
     for k,v in labelCount.most_common():
         sys.stdout.write('Class: {0: <10} Count: {1: <10} ({2:.2f}% of dataset)\n'.format(k,v,100*float(v)/sum(labelCount.values())))
-    print('')
+    sys.stdout.write('\n')
 
     # Store class conversion
     if task == 'binary_classification':

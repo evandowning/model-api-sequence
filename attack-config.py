@@ -10,7 +10,7 @@ def read_seq(fn):
             yield line
 
 def usage():
-    print('python attack-config.py original-sequence attack-sequence config-output')
+    sys.stderr.write('python attack-config.py original-sequence attack-sequence config-output\n')
     sys.exit(2)
 
 def _main():
@@ -44,7 +44,6 @@ def _main():
 
             # Find the next match
             while (a != b):
-#               print 'Insert {0} before {1} {2}\n'.format(b, pc, a)
                 b = b.lower()
                 if b not in shells:
                     shells[b] = dict()

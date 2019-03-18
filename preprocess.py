@@ -121,11 +121,11 @@ def get_labels(folder,fn):
     return rv
 
 def usage():
-    sys.stdout.write('usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {binary_classification | multi_classification | regression}\n')
-    sys.stdout.write('\n')
-    sys.stdout.write('    classification: classes are malware family label\n')
-    sys.stdout.write('    regression: classes are the next API call in the sequence immediately after the sliding window\n')
-    sys.stdout.write('\n')
+    sys.stderr.write('usage: python preprocess.py api-sequence-folder/ api.txt label.txt hash.labels features-folder/ windowSize {binary_classification | multi_classification | regression}\n')
+    sys.stderr.write('\n')
+    sys.stderr.write('    classification: classes are malware family label\n')
+    sys.stderr.write('    regression: classes are the next API call in the sequence immediately after the sliding window\n')
+    sys.stderr.write('\n')
     sys.exit(2)
 
 def _main():
