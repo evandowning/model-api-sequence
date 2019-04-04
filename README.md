@@ -19,7 +19,7 @@ $ sudo ./setup.sh
 ```
 # Extract sequences from nvmtrace dumps (https://github.com/evandowning/nvmtrace/tree/kvm)
 $ cd cuckoo-headless/extract_raw
-$ python2.7 extract-existence.py
+$ python2.7 extract-sequence.py
 
 # Parse sequences into pickle files
 $ python3 preprocess.py api-sequences/ cuckoo-headless/extract_raw/api.txt \
