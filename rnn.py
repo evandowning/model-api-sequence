@@ -253,9 +253,6 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
             sys.stdout.write('\n')
             sys.stdout.flush()
 
-        #TODO - just let it run for one epoch
-        break
-
 def usage():
     sys.stderr.write('usage: python lstm.py cuckoo-headless/extract_raw/api.txt features/ models/ save_model[True|False] save_data[True|False] {binary_classification | multi_classification | regression} convert_class.txt\n\n')
     sys.stderr.write('\tout_class.txt: file which stores trained class values in case they change from the original stored\n')
