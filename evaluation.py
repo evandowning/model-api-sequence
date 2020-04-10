@@ -185,12 +185,14 @@ def _main():
     FN = cf.sum(axis=1) - np.diag(cf)
     TP = np.diag(cf)
     TN = cf.sum() - (FP + FN + TP)
-    if TP+FN > 0:
-        TPR = TP/(TP+FN)
-        FNR = FN/(FN+TP)
-    if TN+FP > 0:
-        TNR = TN/(TN+FP)
-        FPR = FP/(FP+TN)
+#   TPR = TP/(TP+FN)
+    TPR = np.divide(TP,TP+FN, out=np.ones_like(TP+FN)*-1, where=(TP+FN)!=0)
+#   FPR = FP/(FP+TN)
+    FPR = np.divide(FP,FP+TN, out=np.ones_like(FP+TN)*-1, where=(FP+TN)!=0)
+#   FNR = FN/(FN+TP)
+    FNR = np.divide(FN,FN+TP, out=np.ones_like(FN+TP)*-1, where=(FN+TP)!=0)
+#   TNR = TN/(TN+FP)
+    TNR = np.divide(TN,TN+FP, out=np.ones_like(TN+FP)*-1, where=(TN+FP)!=0)
     ACC = (TP+TN)/(TP+TN+FP+FN)
 
     sys.stdout.write('Classes: {0}\n'.format(sorted(classes)))
