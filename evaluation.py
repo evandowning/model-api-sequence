@@ -185,10 +185,12 @@ def _main():
     FN = cf.sum(axis=1) - np.diag(cf)
     TP = np.diag(cf)
     TN = cf.sum() - (FP + FN + TP)
-    TPR = TP/(TP+FN)
-    TNR = TN/(TN+FP)
-    FNR = FN/(FN+TP)
-    FPR = FP/(FP+TN)
+    if TP+FN > 0:
+        TPR = TP/(TP+FN)
+        FNR = FN/(FN+TP)
+    if TN+FP > 0:
+        TNR = TN/(TN+FP)
+        FPR = FP/(FP+TN)
     ACC = (TP+TN)/(TP+TN+FP+FN)
 
     sys.stdout.write('Classes: {0}\n'.format(sorted(classes)))
