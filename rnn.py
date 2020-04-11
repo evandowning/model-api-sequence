@@ -347,5 +347,7 @@ def _main():
     elif task == 'regression':
         train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data, task, [])
 
+    sys.stdout.write('End of script\n')
+
 if __name__ == '__main__':
     _main()
