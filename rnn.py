@@ -198,6 +198,9 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
 
         # Save trained model
         if save_model:
+            sys.stdout.write('Saving model...')
+            sys.stdout.flush()
+
             # https://machinelearningmastery.com/save-load-keras-deep-learning-models/
             # Convert model to JSON format to be stored
             modelJSON = lstm.to_json()
@@ -208,6 +211,8 @@ def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls,
             # Store weights for model
             fn = os.path.join(model_folder,'fold{0}-weight.h5'.format(foldCount))
             lstm.save_weights(fn)
+
+            sys.stdout.write('done\n')
 
         # Save train/test fold to be used by eval.py
         if save_data:
