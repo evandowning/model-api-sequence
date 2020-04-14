@@ -349,5 +349,9 @@ def _main():
 
     sys.stdout.write('End of script\n')
 
+    sys.exit(0)
+
+    sys.stdout.write('This shouldn\'t print.\n')
+
 if __name__ == '__main__':
     _main()
