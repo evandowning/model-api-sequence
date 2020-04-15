@@ -6,7 +6,6 @@ import pickle as pkl
 import numpy as np
 import math
 from collections import Counter
-from multiprocessing import Pool
 
 from sklearn.model_selection import KFold
 
