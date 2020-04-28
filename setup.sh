@@ -15,7 +15,7 @@ set -e
 apt update
 
 # Requirements for modeling
-apt install -y python3.5
+apt install -y python3.7
 apt install -y python3-pip
 pip3 install -r requirements.txt
 
