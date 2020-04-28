@@ -133,7 +133,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         trainData,
         # Use multiprocessing because python Threading isn't really
         # threading: https://docs.python.org/3/glossary.html#term-global-interpreter-lock
-        use_multiprocessing = True,
+        use_multiprocessing = False,
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
@@ -345,12 +345,6 @@ def _main():
         train_lstm(feature_folder, fileMap, model_folder, len(labelCount.keys())+1, windowSize, numCalls, save_model, save_data, task, convert)
     elif task == 'regression':
         train_lstm(feature_folder, fileMap, model_folder, numCalls, windowSize, numCalls, save_model, save_data, task, [])
-
-    sys.stdout.write('End of script\n')
-
-    sys.exit(0)
-
-    sys.stdout.write('This shouldn\'t print.\n')
 
 if __name__ == '__main__':
     _main()
