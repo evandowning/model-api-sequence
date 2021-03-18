@@ -9,10 +9,7 @@ from collections import Counter
 
 from sklearn.model_selection import KFold
 
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Activation, Dropout, Embedding, Conv1D, MaxPooling1D
-from keras import optimizers
-from keras import callbacks as cb
+import tensorflow as tf
 
 # Trains on per sample (i.e., file)
 def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
@@ -82,9 +79,9 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     embedding_size = 256
 
     # https://keras.io/callbacks/#earlystopping
-    early_stop = cb.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
 
-    model = Sequential()
+    model = tf.keras.Sequential()
 
     # We need to add an embedding layer because LSTM (at this moment) that the API call indices (numbers)
     # are of some mathematical significance. E.g., system call 2 is "closer" to system calls 3 and 4.
@@ -95,28 +92,28 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 
     # https://stackoverflow.com/questions/40695452/stateful-lstm-with-embedding-layer-shapes-dont-match
     api_count = numCalls+1  # +1 because 0 is our padding number
-    model.add(Embedding(input_dim=api_count, output_dim=256, input_length=windowSize))
+    model.add(tf.keras.layers.Embedding(input_dim=api_count, output_dim=256, input_length=windowSize))
 
     # https://keras.io/layers/recurrent/#lstm
-    model.add(LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
+    model.add(tf.keras.layers.LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
 
     # NOTE:  If I want to add more layers
     # https://stackoverflow.com/questions/40331510/how-to-stack-multiple-lstm-in-keras
 
     # https://keras.io/layers/core/#dense
-    model.add(Dense(128))
+    model.add(tf.keras.layers.Dense(128))
     # https://keras.io/activations/
-    model.add(Activation('relu'))
+    model.add(tf.keras.layers.Activation('relu'))
 
     # https://keras.io/layers/core/#dropout
-    model.add(Dropout(0.5))
+    model.add(tf.keras.layers.Dropout(0.5))
 
-    model.add(Dense(class_count, name='logits'))
-    model.add(Activation('softmax'))
+    model.add(tf.keras.layers.Dense(class_count, name='logits'))
+    model.add(tf.keras.layers.Activation('softmax'))
 
     # Which optimizer to use
     # https://keras.io/optimizers/
-    opt = optimizers.RMSprop(lr=0.01,decay=0.001)
+    opt = tf.keras.optimizers.RMSprop(lr=0.01,decay=0.001)
 
     # https://keras.io/models/model/#compile
     model.compile(

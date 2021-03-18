@@ -10,11 +10,7 @@ from multiprocessing import Pool
 
 from sklearn.model_selection import KFold
 
-from keras.models import Sequential
-from keras.layers import Dense, Conv1D, Activation, GlobalMaxPooling1D, Input, Embedding, Multiply, Dropout, MaxPooling1D, Flatten
-from keras.models import Model
-from keras import optimizers
-from keras import callbacks as cb
+import tensorflow as tf
 
 # Trains on per sample (i.e., file)
 def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
@@ -84,7 +80,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     embedding_size = 256
 
     # https://keras.io/callbacks/#earlystopping
-    early_stop = cb.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta = 0.0001, patience = 3)
 
     # We need to add an embedding layer because LSTM (at this moment) that the API call indices (numbers)
     # are of some mathematical significance. E.g., system call 2 is "closer" to system calls 3 and 4.
@@ -95,8 +91,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 
     # https://stackoverflow.com/questions/40695452/stateful-lstm-with-embedding-layer-shapes-dont-match
     api_count = numCalls+1  # +1 because 0 is our padding number
-    inp = Input( shape=(windowSize,))
-    emb = Embedding(input_dim=api_count, output_dim=256, input_length=windowSize)(inp)
+    inp = tf.keras.Input( shape=(windowSize,))
+    emb = tf.keras.layers.Embedding(input_dim=api_count, output_dim=256, input_length=windowSize)(inp)
 
     # https://keras.io/layers/recurrent/#lstm
 #   model.add(LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
@@ -104,18 +100,18 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 #   model.add(CuDNNLSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
 
     # From  malconv paper
-    filt = Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='relu', padding='valid' )(emb)
-    attn = Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='sigmoid', padding='valid')(emb)
-    gated = Multiply()([filt,attn])
-    drop = Dropout(0.5)(gated)
-    feat = GlobalMaxPooling1D()( drop )
-    dense = Dense(128, activation='relu')(feat)
-    outp = Dense(class_count, activation='sigmoid')(dense)
-    model = Model( inp, outp )
+    filt = tf.keras.layers.Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='relu', padding='valid' )(emb)
+    attn = tf.keras.layers.Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='sigmoid', padding='valid')(emb)
+    gated = tf.keras.layers.Multiply()([filt,attn])
+    drop = tf.keras.layers.Dropout(0.5)(gated)
+    feat = tf.keras.layers.GlobalMaxPooling1D()( drop )
+    dense = tf.keras.layers.Dense(128, activation='relu')(feat)
+    outp = tf.keras.layers.Dense(class_count, activation='sigmoid')(dense)
+    model = tf.keras.Model( inputs=inp, outputs=outp )
 
     # Which optimizer to use
     # https://keras.io/optimizers/
-    opt = optimizers.RMSprop(lr=0.01,decay=0.001)
+    opt = tf.keras.optimizers.RMSprop(lr=0.01,decay=0.001)
 
     # https://keras.io/models/model/#compile
     model.compile(
