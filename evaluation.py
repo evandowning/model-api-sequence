@@ -6,10 +6,7 @@ import pickle as pkl
 import numpy as np
 from collections import Counter
 
-from keras.models import model_from_json
-from keras import backend as K
-from keras import losses
-from keras import metrics
+import tensorflow as tf
 
 from sklearn.metrics import confusion_matrix,roc_auc_score
 
@@ -65,7 +62,7 @@ def _main():
 
     # Load model
     with open(model_json,'r') as fr:
-        lstm = model_from_json(fr.read())
+        lstm = tf.keras.models.model_from_json(fr.read())
     # Load weights
     lstm.load_weights(model_weights)
 
@@ -215,8 +212,8 @@ def _main():
     print(p,y_pred)
 
     #TODO - fix this bug
-    error = K.eval(losses.sparse_categorical_crossentropy(y_true, y_pred))
-    acc = K.eval(metrics.sparse_categorical_accuracy(y_true,y_pred))
+    error = K.eval(tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
+    acc = K.eval(tf.keras.metrics.sparse_categorical_accuracy(y_true,y_pred))
 
     avgerror = sum(error) / float(len(error))
     avgacc = sum(acc) / float(len(acc))
