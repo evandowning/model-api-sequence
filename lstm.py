@@ -55,7 +55,7 @@ def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
                     # Batch size reached, yield data
                     if num % batchSize == 0:
                         # Here we convert our lists into Numpy arrays because
-                        # Keras requires it as input for its fit_generator()
+                        # Keras requires it as input for its fit()
                         rv_x = xSet
                         rv_y = ySet
 
@@ -125,8 +125,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         # I.e., since we don't use hot-encoding, we use sparse_categorical_accuracy
         metrics=['sparse_categorical_accuracy'])
 
-    # https://keras.io/models/model/#fit_generator
-    hist = model.fit_generator(
+    # https://www.tensorflow.org/versions/r2.4/api_docs/python/tf/keras/Model#fit
+    hist = model.fit(
         # Data to train
         trainData,
         # Use multiprocessing because python Threading isn't really

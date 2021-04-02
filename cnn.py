@@ -56,7 +56,7 @@ def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
                     # Batch size reached, yield data
                     if num % batchSize == 0:
                         # Here we convert our lists into Numpy arrays because
-                        # Keras requires it as input for its fit_generator()
+                        # Keras requires it as input for its fit()
                         rv_x = xSet
                         rv_y = ySet
 
@@ -94,11 +94,6 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     inp = tf.keras.Input( shape=(windowSize,))
     emb = tf.keras.layers.Embedding(input_dim=api_count, output_dim=256, input_length=windowSize)(inp)
 
-    # https://keras.io/layers/recurrent/#lstm
-#   model.add(LSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
-    #TODO - GPU stuffs
-#   model.add(CuDNNLSTM(num_units,input_shape=(windowSize, api_count),return_sequences=False))
-
     # From  malconv paper
     filt = tf.keras.layers.Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='relu', padding='valid' )(emb)
     attn = tf.keras.layers.Conv1D( filters=64, kernel_size=3, strides=1, use_bias=True, activation='sigmoid', padding='valid')(emb)
@@ -123,8 +118,8 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         # I.e., since we don't use hot-encoding, we use sparse_categorical_accuracy
         metrics=['sparse_categorical_accuracy'])
 
-    # https://keras.io/models/model/#fit_generator
-    hist = model.fit_generator(
+    # https://www.tensorflow.org/versions/r2.4/api_docs/python/tf/keras/Model#fit
+    hist = model.fit(
         # Data to train
         trainData,
         # Use multiprocessing because python Threading isn't really
@@ -133,7 +128,6 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
         # Number of steps per epoch (this is how we train our large
         # number of samples dataset without running out of memory)
         steps_per_epoch = trainBatches,
-        #TODO
         # Number of epochs
         epochs = 100,
         # Validation data (will not be trained on)
@@ -148,7 +142,6 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 
 # Trains and tests LSTM over samples
 def train_lstm(folder, fileMap, model_folder, class_count, windowSize, numCalls, save_model, save_data, task, convert):
-    #TODO
     batchSize = 512
 
     # Get folds for cross validation
