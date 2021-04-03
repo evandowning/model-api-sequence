@@ -12,6 +12,15 @@ from sklearn.model_selection import KFold
 
 import tensorflow as tf
 
+# NOTE
+# Prevents hanging at the end of this script
+# Not sure precise reason, but there are issues with Python threading within Docker
+# https://alexisrozhkov.github.io/python-docker-debug/
+# https://pythonspeed.com/articles/python-multiprocessing/
+# https://www.freecodecamp.org/news/how-a-badly-configured-tensorflow-in-docker-can-be-10x-slower-than-expected-3ac89f33d625/
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+
 # Trains on per sample (i.e., file)
 def sequence_generator(folder, sample, foldIDs, batchSize, task, convert):
     # We want to loop infinitely because we're training our data on multiple epochs in build_LSTM_model()
