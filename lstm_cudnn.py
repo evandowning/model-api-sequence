@@ -121,7 +121,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
 
     # Which optimizer to use
     # https://keras.io/optimizers/
-    opt = optimizers.RMSprop(lr=0.01,decay=0.001)
+    opt = optimizers.RMSprop(learning_rate=0.01,decay=0.001)
 
     # https://keras.io/models/model/#compile
     model.compile(
