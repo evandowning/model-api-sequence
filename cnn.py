@@ -117,7 +117,7 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     # https://keras.io/optimizers/
     # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/experimental/RMSprop
     decay=0.001
-    momentum=1+decay
+    momentum=1-decay
     opt = tf.keras.optimizers.RMSprop(learning_rate=0.01,momentum=momentum)
 
     # https://keras.io/models/model/#compile
