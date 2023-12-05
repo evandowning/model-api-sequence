@@ -1,5 +1,5 @@
 tensorflow>=2.11.0
-tensorflow-gpu>=2.11.0
+#tensorflow-gpu>=2.11.0
 scikit-learn>=1.0.2
 pypng>=0.20220715.0
 datasketch>=1.5.8

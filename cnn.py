@@ -116,9 +116,17 @@ def build_LSTM_model(trainData, trainBatches, testData, testBatches, windowSize,
     # Which optimizer to use
     # https://keras.io/optimizers/
     # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/experimental/RMSprop
-    decay=0.001
-    momentum=1-decay
-    opt = tf.keras.optimizers.RMSprop(learning_rate=0.01,momentum=momentum)
+    # decay=0.001
+    # momentum=1-decay
+    decay=0.998
+    momentum=0.0
+    step=trainBatches
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=1e-2, 
+        decay_steps=step, 
+        decay_rate=decay)
+    opt = tf.keras.optimizers.RMSprop(learning_rate=lr_schedule,momentum=momentum)
 
     # https://keras.io/models/model/#compile
     model.compile(
